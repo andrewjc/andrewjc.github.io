@@ -7,19 +7,24 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            line-height: 1.6;
         }
         /* Container layout */
         #container {
             display: flex;
             flex-wrap: wrap;
+            gap: 20px; /* Add gap between sections */
         }
         #tasks-section, #calculations-section {
             flex: 1;
-            min-width: 300px;
-            padding: 10px;
+            min-width: 350px; /* Increased min-width slightly */
+            padding: 15px;
+            border: 1px solid #ddd; /* Use a lighter border */
+            border-radius: 5px; /* Add slight rounding */
+            background-color: #f9f9f9; /* Light background */
         }
-        #tasks-section {
-            border-right: 1px solid #ccc;
+        h1, h2, h3 {
+             color: #333;
         }
         /* Task styling */
         .task {
@@ -27,28 +32,46 @@
             padding: 15px;
             margin-bottom: 15px;
             position: relative;
+            background-color: #fff;
+            border-radius: 3px;
         }
         .task h3 {
             margin-top: 0;
+            margin-bottom: 10px; /* Added margin */
             cursor: pointer;
+            color: #0056b3; /* Make title stand out */
+            font-size: 1.1em;
+        }
+        .task p {
+            font-size: 0.95em;
+            color: #555;
+            margin-bottom: 10px;
         }
         .btn {
-            padding: 8px 12px;
+            padding: 8px 15px; /* Slightly larger padding */
             margin-top: 10px;
             cursor: pointer;
+            border-radius: 4px; /* Rounded buttons */
+            font-size: 0.95em;
+            border: none;
         }
         .btn-add {
             background-color: #28a745;
             color: white;
-            border: none;
+        }
+        .btn-add:hover {
+            background-color: #218838;
         }
         .btn-remove {
             background-color: #dc3545;
             color: white;
-            border: none;
             position: absolute;
             top: 10px;
             right: 10px;
+            padding: 5px 8px; /* Smaller remove button */
+        }
+        .btn-remove:hover {
+             background-color: #c82333;
         }
         /* Modal styling */
         .modal {
@@ -61,15 +84,16 @@
             width: 100%;
             height: 100%;
             overflow-y: auto;
-            background-color: rgba(0,0,0,0.4);
+            background-color: rgba(0,0,0,0.5); /* Darker overlay */
         }
         .modal-content {
             background-color: #fefefe;
-            margin: auto;
-            padding: 20px;
+            margin: 5% auto; /* Better vertical centering */
+            padding: 25px;
             border: 1px solid #888;
             width: 90%;
             max-width: 800px;
+            border-radius: 5px;
         }
         .close {
             color: #aaa;
@@ -77,54 +101,117 @@
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
+            line-height: 1; /* Align better */
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+        #task-tiles-container {
+             display: flex; /* Use flexbox for tiles */
+             flex-wrap: wrap; /* Allow wrapping */
+             gap: 15px; /* Gap between tiles */
         }
         .task-tile {
-            display: inline-block;
-            width: 180px;
+            /* Removed fixed width, let flexbox handle it */
+            flex: 1 1 180px; /* Flex grow, shrink, basis */
+            max-width: 220px; /* Limit max width */
             border: 1px solid #ccc;
-            padding: 10px;
-            margin: 10px;
+            padding: 15px;
             vertical-align: top;
             cursor: pointer;
+            background-color: #fff;
+            border-radius: 4px;
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        .task-tile:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
         .task-tile h4 {
-            margin: 5px 0;
+            margin: 0 0 8px 0; /* Adjust margin */
+            color: #0056b3;
         }
         .task-tile p {
             font-size: 0.9em;
             color: #555;
+            margin-bottom: 0;
         }
         /* Form styling */
         label {
             display: flex;
             align-items: center;
-            margin-top: 8px;
+            margin-top: 10px; /* Consistent margin */
+            flex-wrap: wrap; /* Allow wrapping on small screens */
         }
         label span {
-            width: 200px;
+            width: 220px; /* Slightly wider label text */
             margin-right: 10px;
+            font-size: 0.95em;
+            color: #333;
         }
         input[type="number"], select, input[type="text"] {
             flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            min-width: 100px; /* Ensure minimum width */
         }
-        .checkbox-label {
-            align-items: center;
+        .task-name-input {
+            font-size: 1em; /* Match surrounding text */
+            padding: 2px 5px;
+            border: 1px dashed #ccc;
         }
+        /* Calculations section */
+        #calculations h3 {
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            font-size: 1.05em;
+        }
+         #calculations p {
+            margin: 5px 0;
+            font-size: 0.95em;
+         }
+         #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f5ff; /* Light blue background */
+            border: 1px solid #b3d7ff;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #004085;
+         }
+         #result strong {
+            color: #004085; /* Ensure text color consistency */
+         }
+         hr {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 15px 0;
+         }
         /* Export button */
         .btn-export {
             background-color: #007bff;
             color: white;
-            border: none;
-            margin-top: 10px;
+            margin-top: 15px; /* Consistent margin */
         }
+         .btn-export:hover {
+             background-color: #0056b3;
+         }
         /* Responsive design */
         @media (max-width: 800px) {
             #container {
                 flex-direction: column;
             }
             #tasks-section, #calculations-section {
-                min-width: 100%;
-                border-right: none;
+                min-width: 100%; /* Full width on small screens */
+                margin-bottom: 15px; /* Add space between stacked sections */
+            }
+            label span {
+                width: 150px; /* Adjust label width for smaller screens */
             }
         }
     </style>
@@ -138,27 +225,29 @@
     <div id="tasks-section">
         <h2>Tasks</h2>
         <button id="add-task-btn" class="btn btn-add">Add Task</button>
-        <div id="tasks-container"></div>
+        <div id="tasks-container">
+            <!-- Tasks will be dynamically added here -->
+        </div>
 
-        <h2>Team and Productivity Factors</h2>
+        <h2>Team and Project Factors</h2>
         <div id="team-factors">
             <label><span>Number of Team Members (R):</span>
-                <input type="number" id="team-members" value="5">
+                <input type="number" id="team-members" value="5" min="1">
             </label>
-            <label><span>Working Hours per Day per Resource (D):</span>
-                <input type="number" id="working-hours" value="8">
+            <label><span>Working Hours per Day per Member (D):</span>
+                <input type="number" id="working-hours" value="8" min="1" step="0.5">
             </label>
-            <label><span>Overhead Factor (O) (0 - 1):</span>
-                <input type="number" step="0.01" id="overhead" value="0.1">
+            <label><span>Overhead Factor (O) (e.g., 0.15 for 15%):</span>
+                <input type="number" step="0.01" id="overhead" value="0.15" min="0" max="0.99">
             </label>
-            <label><span>Productivity Factor (P) (0 - 1):</span>
-                <input type="number" step="0.01" id="productivity" value="0.85">
+            <label><span>Team Productivity Factor (P) (e.g., 0.85):</span>
+                <input type="number" step="0.01" id="productivity" value="0.85" min="0.1" max="1.5">
             </label>
-            <label><span>Learning Curve Factor (L):</span>
-                <input type="number" step="0.01" id="learning-curve" value="1">
+             <label><span>Team Maturity/Learning Factor (L) (>1 better):</span>
+                <input type="number" step="0.05" id="learning-curve" value="1.0" min="0.5">
             </label>
             <label><span>Average Hours per Story Point (H):</span>
-                <input type="number" step="0.1" id="hours-per-story-point" value="2">
+                <input type="number" step="0.1" id="hours-per-story-point" value="4" min="0.5">
             </label>
         </div>
     </div>
@@ -166,17 +255,21 @@
     <!-- Calculations Section -->
     <div id="calculations-section">
         <h2>Calculations</h2>
-        <div id="calculations"></div>
-        <div id="result"></div>
-        <button id="export-btn" class="btn btn-export">Export to Excel</button>
+        <div id="calculations">
+            <!-- Detailed calculation steps will be shown here -->
+        </div>
+        <div id="result">
+            <!-- Final estimation result will be shown here -->
+        </div>
+        <button id="export-btn" class="btn btn-export">Export Task Details</button>
     </div>
 </div>
 
 <!-- Modal for Adding Tasks -->
 <div id="task-modal" class="modal">
     <div class="modal-content">
-        <span class="close" id="modal-close">&times;</span>
-        <h2>Select a Task</h2>
+        <span class="close" id="modal-close">×</span>
+        <h2>Select a Task Template</h2>
         <div id="task-tiles-container">
             <!-- Task tiles will be dynamically added here -->
         </div>
@@ -186,183 +279,52 @@
 <script>
     let taskCounter = 0;
 
+    // Using Fibonacci sequence for complexity estimation
     const fibonacciNumbers = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 
-    // Updated common tasks with more Spring Boot API development tasks
+    // Common task templates with typical values
     const commonTasks = [
-        {
-            title: "Create API Endpoint",
-            description: "Develop a new RESTful API endpoint.",
-            complexity: 5,
-            risk: 0.25,
-            priority: 5,
-            duration: 5
-        },
-        {
-            title: "Create API Swagger Documentation",
-            description: "Develop Swagger/OpenAPI documentation for a RESTful API endpoint.",
-            complexity: 2,
-            risk: 0.1,
-            priority: 1,
-            duration: 2
-        },
-        {
-            title: "Implement Authentication",
-            description: "Set up authentication mechanisms using Spring Security.",
-            complexity: 8,
-            risk: 0.3,
-            priority: 5,
-            duration: 8
-        },
-        {
-            title: "Implement Authorization",
-            description: "Define roles and permissions for API access.",
-            complexity: 8,
-            risk: 0.3,
-            priority: 5,
-            duration: 8
-        },
-        {
-            title: "Configure Database Connection",
-            description: "Set up connection to the database using JPA/Hibernate.",
-            complexity: 5,
-            risk: 0.2,
-            priority: 5,
-            duration: 5
-        },
-        {
-            title: "Implement CRUD Operations",
-            description: "Create Create, Read, Update, Delete operations for an entity.",
-            complexity: 5,
-            risk: 0.2,
-            priority: 5,
-            duration: 5
-        },
-        {
-            title: "Implement Exception Handling",
-            description: "Set up global exception handling for the API.",
-            complexity: 3,
-            risk: 0.15,
-            priority: 4,
-            duration: 3
-        },
-        {
-            title: "Implement Logging",
-            description: "Set up logging using Logback or Log4j.",
-            complexity: 2,
-            risk: 0.1,
-            priority: 3,
-            duration: 2
-        },
-        {
-            title: "Write Unit Tests",
-            description: "Write unit tests using JUnit and Mockito.",
-            complexity: 5,
-            risk: 0.2,
-            priority: 5,
-            duration: 5
-        },
-        {
-            title: "Implement Caching",
-            description: "Set up caching mechanisms for the API.",
-            complexity: 5,
-            risk: 0.25,
-            priority: 4,
-            duration: 5
-        },
-        {
-            title: "Implement Pagination",
-            description: "Add pagination support to endpoints returning lists.",
-            complexity: 3,
-            risk: 0.15,
-            priority: 4,
-            duration: 3
-        },
-        {
-            title: "Optimize Performance",
-            description: "Identify and fix performance bottlenecks.",
-            complexity: 8,
-            risk: 0.4,
-            priority: 3,
-            duration: 8
-        },
-        {
-            title: "Implement Data Validation",
-            description: "Add validation to incoming data.",
-            complexity: 3,
-            risk: 0.15,
-            priority: 4,
-            duration: 3
-        },
-        {
-            title: "Setup Continuous Integration",
-            description: "Configure CI pipeline for automatic builds and tests.",
-            complexity: 5,
-            risk: 0.25,
-            priority: 3,
-            duration: 5
-        },
-        {
-            title: "Deploy to Production Environment",
-            description: "Prepare and deploy application to production.",
-            complexity: 8,
-            risk: 0.35,
-            priority: 5,
-            duration: 8
-        },
-        {
-            title: "Refactor Code",
-            description: "Improve code structure and readability.",
-            complexity: 5,
-            risk: 0.2,
-            priority: 2,
-            duration: 5
-        },
-        {
-            title: "Conduct Code Review",
-            description: "Review code for best practices and standards.",
-            complexity: 3,
-            risk: 0.1,
-            priority: 2,
-            duration: 3
-        },
-        {
-            title: "Implement Security Measures",
-            description: "Add security measures like input sanitization.",
-            complexity: 5,
-            risk: 0.3,
-            priority: 5,
-            duration: 5
-        },
-        {
-            title: "Setup API Monitoring",
-            description: "Implement monitoring tools for API health.",
-            complexity: 5,
-            risk: 0.25,
-            priority: 3,
-            duration: 5
-        },
-        {
-            title: "Custom Task",
-            description: "Define custom task parameters.",
-            complexity: null,
-            risk: null,
-            priority: null,
-            duration: null
-        }
+        { title: "Create API Endpoint", description: "Develop a new RESTful API endpoint.", complexity: 5, risk: 0.2, priority: 5, duration: 3 },
+        { title: "Create API Swagger Documentation", description: "Develop Swagger/OpenAPI documentation.", complexity: 2, risk: 0.1, priority: 3, duration: 1 },
+        { title: "Implement Authentication (OAuth2)", description: "Set up authentication using Spring Security and OAuth2.", complexity: 8, risk: 0.3, priority: 5, duration: 5 },
+        { title: "Implement Role-Based Authorization", description: "Define roles and permissions for API access.", complexity: 5, risk: 0.25, priority: 5, duration: 3 },
+        { title: "Configure Database Schema (New Entity)", description: "Set up DB connection and schema using JPA/Hibernate.", complexity: 3, risk: 0.15, priority: 5, duration: 2 },
+        { title: "Implement CRUD Operations", description: "Create CRUD operations for a data entity.", complexity: 5, risk: 0.15, priority: 5, duration: 3 },
+        { title: "Implement Global Exception Handling", description: "Set up centralized exception handling.", complexity: 3, risk: 0.1, priority: 4, duration: 2 },
+        { title: "Implement Centralized Logging", description: "Set up logging using Logback/SLF4j.", complexity: 2, risk: 0.05, priority: 3, duration: 1 },
+        { title: "Write Unit Tests (Service Layer)", description: "Write unit tests using JUnit and Mockito.", complexity: 5, risk: 0.1, priority: 4, duration: 3 },
+        { title: "Write Integration Tests (API Endpoint)", description: "Write integration tests for API endpoints.", complexity: 8, risk: 0.2, priority: 4, duration: 4 },
+        { title: "Implement Caching (e.g., Redis)", description: "Set up caching mechanisms for performance.", complexity: 5, risk: 0.25, priority: 3, duration: 3 },
+        { title: "Implement API Pagination", description: "Add pagination support to list endpoints.", complexity: 3, risk: 0.1, priority: 4, duration: 2 },
+        { title: "Performance Optimization", description: "Identify and fix performance bottlenecks.", complexity: 8, risk: 0.35, priority: 3, duration: 5 },
+        { title: "Implement Input Data Validation", description: "Add validation using Bean Validation.", complexity: 3, risk: 0.1, priority: 4, duration: 2 },
+        { title: "Setup CI Pipeline (e.g., Jenkins/GitLab CI)", description: "Configure CI for builds and tests.", complexity: 5, risk: 0.2, priority: 3, duration: 4 },
+        { title: "Deploy to Staging Environment", description: "Prepare and deploy application to staging.", complexity: 3, risk: 0.15, priority: 4, duration: 2 },
+        { title: "Code Refactoring (Specific Module)", description: "Improve code structure and readability.", complexity: 5, risk: 0.15, priority: 2, duration: 3 },
+        { title: "Conduct Peer Code Review", description: "Review code for best practices.", complexity: 2, risk: 0.05, priority: 3, duration: 1 },
+        { title: "Implement Security Headers", description: "Add security headers like CSP, HSTS.", complexity: 3, risk: 0.2, priority: 5, duration: 2 },
+        { title: "Setup API Monitoring (e.g., Prometheus/Grafana)", description: "Implement monitoring for API health.", complexity: 5, risk: 0.2, priority: 3, duration: 4 },
+        { title: "Custom Task", description: "Define custom task parameters.", complexity: null, risk: null, priority: null, duration: null }
     ];
 
     // Event listeners
     document.getElementById('add-task-btn').addEventListener('click', openTaskModal);
     document.getElementById('modal-close').addEventListener('click', closeTaskModal);
     document.getElementById('task-tiles-container').addEventListener('click', selectTask);
-    document.getElementById('tasks-container').addEventListener('input', calculate);
-    document.getElementById('team-factors').addEventListener('input', calculate);
+    document.getElementById('tasks-container').addEventListener('input', calculate); // Recalculate on task input change
+    document.getElementById('team-factors').addEventListener('input', calculate); // Recalculate on factor change
     document.getElementById('export-btn').addEventListener('click', exportToExcel);
+    window.addEventListener('click', (event) => { // Close modal if clicking outside
+        const modal = document.getElementById('task-modal');
+        if (event.target == modal) {
+            closeTaskModal();
+        }
+    });
 
-    // Initialize task tiles
+    // Initialize task tiles in the modal
     function initializeTaskTiles() {
         const container = document.getElementById('task-tiles-container');
+        container.innerHTML = ''; // Clear existing tiles
         commonTasks.forEach((task, index) => {
             const tile = document.createElement('div');
             tile.className = 'task-tile';
@@ -374,7 +336,6 @@
             container.appendChild(tile);
         });
     }
-    initializeTaskTiles();
 
     function openTaskModal() {
         document.getElementById('task-modal').style.display = 'block';
@@ -388,7 +349,7 @@
         const tile = event.target.closest('.task-tile');
         if (!tile) return;
         const index = tile.dataset.index;
-        const taskData = commonTasks[index];
+        const taskData = JSON.parse(JSON.stringify(commonTasks[index])); // Deep copy template
         addTask(taskData);
         closeTaskModal();
     }
@@ -398,50 +359,67 @@
         const taskDiv = document.createElement('div');
         taskDiv.className = 'task';
         taskDiv.id = 'task-' + taskCounter;
+        const taskId = taskCounter; // Capture counter for closures
+
+        // Set defaults for custom task if values are null
+        const defaultComplexity = 3;
+        const defaultRisk = 0.1;
+        const defaultPriority = 3;
+        const defaultDuration = 1;
 
         taskDiv.innerHTML = `
-            <button class="btn btn-remove" onclick="removeTask(${taskCounter})">Remove</button>
-            <h3 class="task-title" onclick="editTaskTitle(${taskCounter})">Task ${taskCounter}: <span class="task-name">${taskData.title || 'Custom Task'}</span></h3>
-            ${taskData.description ? `<p>${taskData.description}</p>` : ''}
-            <label><span>Complexity (C<sub>i</sub>):</span>
+            <button class="btn btn-remove" onclick="removeTask(${taskId})">× Remove</button>
+            <h3 class="task-title" onclick="editTaskTitle(${taskId})">Task ${taskId}: <span class="task-name">${taskData.title || 'Custom Task'}</span></h3>
+            ${taskData.description ? `<p>${taskData.description}</p>` : '<p>Enter task details below.</p>'}
+            <label><span>Complexity (C<sub>i</sub>) (Story Points):</span>
                 <select class="complexity">
-                    ${fibonacciNumbers.map(num => `<option value="${num}">${num}</option>`).join('')}
+                    ${fibonacciNumbers.map(num => `<option value="${num}" ${taskData.complexity === num ? 'selected' : ''}>${num}</option>`).join('')}
                 </select>
             </label>
-            <label><span>Risk Factor (R<sub>i</sub>) (0 - 1):</span>
-                <input type="number" step="0.01" class="risk" value="${taskData.risk !== null ? taskData.risk : 0}">
+            <label><span>Risk Factor (R<sub>i</sub>) (0-1, e.g., 0.2):</span>
+                <input type="number" step="0.05" min="0" max="1" class="risk" value="${taskData.risk !== null ? taskData.risk : defaultRisk}">
             </label>
-            <label><span>Priority (P<sub>i</sub>) (1 - 5):</span>
-                <input type="number" class="priority" value="${taskData.priority !== null ? taskData.priority : 3}" min="1" max="5">
+            <label><span>Priority (P<sub>i</sub>) (1=Low, 5=High):</span>
+                <input type="number" class="priority" value="${taskData.priority !== null ? taskData.priority : defaultPriority}" min="1" max="5" step="1">
             </label>
-            <label><span>Expected Duration (D<sub>i</sub>) in days:</span>
-                <input type="number" step="0.1" class="duration" value="${taskData.duration !== null ? taskData.duration : 1}">
-            </label>
-            <label class="checkbox-label">
-                <input type="checkbox" class="shared"> Share between 2 developers
+            <label><span>Base Duration Estimate (D<sub>i</sub>) (days):</span>
+                <input type="number" step="0.5" min="0.5" class="duration" value="${taskData.duration !== null ? taskData.duration : defaultDuration}">
             </label>
         `;
 
-        // Set default values if provided
-        if (taskData.complexity !== null) {
-            const complexitySelect = taskDiv.querySelector('.complexity');
-            complexitySelect.value = taskData.complexity;
-        }
+        // Ensure complexity dropdown reflects the value if not standard Fibonacci
+         const complexitySelect = taskDiv.querySelector('.complexity');
+         if (taskData.complexity !== null && !fibonacciNumbers.includes(taskData.complexity)) {
+             // Add the value if it's not in the list and select it
+             const customOption = document.createElement('option');
+             customOption.value = taskData.complexity;
+             customOption.text = taskData.complexity;
+             customOption.selected = true;
+             complexitySelect.appendChild(customOption);
+         } else if (taskData.complexity === null) {
+             complexitySelect.value = defaultComplexity; // Set default if null
+         }
+
 
         document.getElementById('tasks-container').appendChild(taskDiv);
-        calculate();
+        calculate(); // Recalculate after adding
     }
 
     function removeTask(id) {
         const taskDiv = document.getElementById('task-' + id);
-        taskDiv.remove();
-        calculate();
+        if (taskDiv) {
+            taskDiv.remove();
+            calculate(); // Recalculate after removal
+        }
     }
 
     function editTaskTitle(id) {
         const taskDiv = document.getElementById('task-' + id);
-        const taskTitle = taskDiv.querySelector('.task-title');
+        const taskTitleElement = taskDiv.querySelector('.task-title');
         const taskNameSpan = taskDiv.querySelector('.task-name');
+        if (!taskNameSpan || taskTitleElement.querySelector('.task-name-input')) {
+            return; // Already editing or element not found
+        }
         const currentName = taskNameSpan.textContent;
 
         // Create an input field
@@ -449,155 +427,234 @@
         input.type = 'text';
         input.value = currentName;
         input.className = 'task-name-input';
-        input.addEventListener('blur', function() {
-            saveTaskTitle(id, input.value);
-        });
-        input.addEventListener('keydown', function(e) {
+        input.addEventListener('blur', () => saveTaskTitle(id, input.value));
+        input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                saveTaskTitle(id, input.value);
+                input.blur(); // Trigger blur to save
+            } else if (e.key === 'Escape') {
+                // Cancel edit: Revert to original span and remove input
+                taskTitleElement.replaceChild(taskNameSpan, input);
             }
         });
 
         // Replace the span with the input
-        taskTitle.replaceChild(input, taskNameSpan);
-        input.focus();
+        taskTitleElement.replaceChild(input, taskNameSpan);
+        input.select(); // Select text for easy editing
     }
 
     function saveTaskTitle(id, newName) {
         const taskDiv = document.getElementById('task-' + id);
-        const taskTitle = taskDiv.querySelector('.task-title');
+        if (!taskDiv) return;
+        const taskTitleElement = taskDiv.querySelector('.task-title');
         const input = taskDiv.querySelector('.task-name-input');
 
         // Create a new span with updated name
-        const span = document.createElement('span');
-        span.className = 'task-name';
-        span.textContent = newName;
+        const newSpan = document.createElement('span');
+        newSpan.className = 'task-name';
+        newSpan.textContent = newName.trim() || `Task ${id}`; // Use default if empty
 
-        // Replace the input with the span
-        taskTitle.replaceChild(span, input);
-        calculate();
+        // Replace the input with the new span
+        if (input) {
+             taskTitleElement.replaceChild(newSpan, input);
+             calculate(); // Recalculate as task details might implicitly change
+        }
     }
 
     function calculate() {
         const tasks = document.querySelectorAll('.task');
-        let calculationsDiv = document.getElementById('calculations');
-        calculationsDiv.innerHTML = '';
-        let S_adj = 0;
-        let totalTestingEffort = 0;
-        let totalTaskCapacity = 0;
+        const calculationsDiv = document.getElementById('calculations');
+        calculationsDiv.innerHTML = ''; // Clear previous calculations
+        let totalAdjustedStoryPoints = 0;
+        let totalBaseStoryPoints = 0;
         let calculationSteps = '';
+
+        // --- Improved Mathematical Model ---
+        // 1. Adjusted Story Points (ASPᵢ) = Cᵢ * Fᵢ
+        //    Adjustment Factor Fᵢ = (1 + Rᵢ) * (1 + 0.1 * ln(1 + Dᵢ))
+        //    Incorporates risk and a modest adjustment for duration uncertainty.
+        //
+        // 2. Testing Effort (TestEffortᵢ) = ASPᵢ * (BaseTestFactor + RiskTestFactor * Rᵢ)
+        //    BaseTestFactor = 0.15 (15% base)
+        //    RiskTestFactor = 0.20 (Risk adds up to 20% more testing)
+        //
+        // 3. Total Effort per Task (TaskTotalPointsᵢ) = ASPᵢ + TestEffortᵢ
+        //
+        // 4. Total Project Story Points (SP_total) = Sum(TaskTotalPointsᵢ)
+        //
+        // 5. Team Velocity (Velocity) = Effective Daily Hours / H
+        //    Effective Daily Hours = R * D * (1 - O) * P * L
+        //
+        // 6. Estimated Duration (T) = SP_total / Velocity
 
         tasks.forEach((task, index) => {
             const complexity = parseFloat(task.querySelector('.complexity').value);
             const risk = parseFloat(task.querySelector('.risk').value);
-            const priority = parseInt(task.querySelector('.priority').value);
+            const priority = parseInt(task.querySelector('.priority').value); // Kept for info, not in core calculation
             const duration = parseFloat(task.querySelector('.duration').value);
-            const shared = task.querySelector('.shared').checked;
-            const developersAssigned = shared ? 2 : 1;
             const taskTitle = task.querySelector('.task-name').textContent;
 
-            // Adjustment Factor Fi
-            const Fi = (1 + risk) * (1 + (5 - priority) / 5) * (1 + Math.log(duration));
+            // Input Validation for this task
+            if (isNaN(complexity) || isNaN(risk) || isNaN(priority) || isNaN(duration) ||
+                complexity <= 0 || risk < 0 || risk > 1 || priority < 1 || priority > 5 || duration <= 0) {
+                calculationSteps += `<h3>${taskTitle} - Invalid Input</h3><p>Skipping calculation due to invalid input values.</p><hr>`;
+                return; // Skip this task's calculation
+            }
+
+            // Calculate Adjustment Factor (Fi)
+            const riskAdjustment = risk;
+            const durationUncertainty = 0.1 * Math.log(1 + duration); // ln(1+D) avoids log(0)
+            const Fi = (1 + riskAdjustment) * (1 + durationUncertainty);
+
+            // Calculate Adjusted Story Points (ASP) for development
             const adjustedStoryPoints = complexity * Fi;
-            S_adj += adjustedStoryPoints;
+            totalBaseStoryPoints += complexity;
 
-            // Testing Effort (proportional to complexity)
-            const testingEffort = complexity * 0.5; // Adjust the factor as needed
-            totalTestingEffort += testingEffort;
+            // Calculate Testing Effort for the task
+            const baseTestFactor = 0.15;
+            const riskTestFactor = 0.20;
+            const testingEffort = adjustedStoryPoints * (baseTestFactor + riskTestFactor * risk);
 
-            // Total task capacity based on developers assigned
-            totalTaskCapacity += developersAssigned;
+            // Total effort for this task
+            const taskTotalPoints = adjustedStoryPoints + testingEffort;
+            totalAdjustedStoryPoints += taskTotalPoints;
 
+            // Append calculation steps for this task
             calculationSteps += `
-                <h3>${taskTitle} Calculations</h3>
-                <p>Complexity (C<sub>i</sub>): ${complexity}</p>
-                <p>Risk Factor (R<sub>i</sub>): ${risk}</p>
+                <h3>${taskTitle} (Task ${index + 1})</h3>
+                <p>Base Complexity (C<sub>i</sub>): ${complexity.toFixed(1)} SP</p>
+                <p>Risk Factor (R<sub>i</sub>): ${risk.toFixed(2)}</p>
+                <p>Base Duration (D<sub>i</sub>): ${duration.toFixed(1)} days</p>
                 <p>Priority (P<sub>i</sub>): ${priority}</p>
-                <p>Expected Duration (D<sub>i</sub>): ${duration}</p>
-                <p>Developers Assigned: ${developersAssigned}</p>
-                <p>Adjustment Factor (F<sub>i</sub>): ${Fi.toFixed(3)}</p>
-                <p>Adjusted Story Points (C<sub>i</sub> × F<sub>i</sub>): ${adjustedStoryPoints.toFixed(3)}</p>
-                <p>Testing Effort: ${testingEffort.toFixed(2)} story points</p>
+                <p>Adjustment Factor (F<sub>i</sub> = (1+R<sub>i</sub>)*(1+0.1*ln(1+D<sub>i</sub>))): ${Fi.toFixed(3)}</p>
+                <p>Adjusted Dev Story Points (ASP<sub>i</sub> = C<sub>i</sub> × F<sub>i</sub>): ${adjustedStoryPoints.toFixed(2)} SP</p>
+                <p>Estimated Testing Effort (Test<sub>i</sub> = ASP<sub>i</sub> * (0.15 + 0.2*R<sub>i</sub>)): ${testingEffort.toFixed(2)} SP</p>
+                <p><strong>Total Points for Task (ASP<sub>i</sub> + Test<sub>i</sub>): ${taskTotalPoints.toFixed(2)} SP</strong></p>
                 <hr>
             `;
         });
 
         // Team and Productivity Factors
-        const R = parseInt(document.getElementById('team-members').value);
-        const D = parseFloat(document.getElementById('working-hours').value);
-        const O = parseFloat(document.getElementById('overhead').value);
-        const E = 1 - O;
-        const P = parseFloat(document.getElementById('productivity').value);
-        const L = parseFloat(document.getElementById('learning-curve').value);
-        const H = parseFloat(document.getElementById('hours-per-story-point').value);
+        const R = parseInt(document.getElementById('team-members').value) || 0;
+        const D = parseFloat(document.getElementById('working-hours').value) || 0;
+        const O = parseFloat(document.getElementById('overhead').value) || 0;
+        const P = parseFloat(document.getElementById('productivity').value) || 0;
+        const L = parseFloat(document.getElementById('learning-curve').value) || 0;
+        const H = parseFloat(document.getElementById('hours-per-story-point').value) || 0;
 
-        // Adjusted team capacity based on per-task developer assignments
-        const averageDevelopersPerTask = totalTaskCapacity / tasks.length;
-        const adjustedR = Math.min(R, averageDevelopersPerTask);
+        // Calculate Team Velocity
+        const efficiencyFactor = 1 - O;
+        const effectiveHoursPerDay = R * D * efficiencyFactor * P * L;
+        let teamVelocity = 0; // SP per Day
+        if (H > 0 && effectiveHoursPerDay > 0) { // Check effective hours too
+            teamVelocity = effectiveHoursPerDay / H;
+        }
 
-        // Total Project Duration T
-        const numerator = H * (S_adj + totalTestingEffort);
-        const denominator = adjustedR * D * E * P * L;
-        const T = numerator / denominator;
+        // Calculate Total Project Duration
+        let totalDuration = 0;
+        let resultHTML = '';
+        let summarySteps = '<h3>Project Summary</h3>';
 
-        // Display calculations
-        calculationsDiv.innerHTML += calculationSteps;
-        calculationsDiv.innerHTML += `
-            <h3>Summary Calculations</h3>
-            <p>Total Adjusted Story Points (S<sub>adj</sub>): ${S_adj.toFixed(3)}</p>
-            <p>Total Testing Effort: ${totalTestingEffort.toFixed(3)} story points</p>
-            <p>Combined Story Points (Development + Testing): ${(S_adj + totalTestingEffort).toFixed(3)}</p>
-            <p>Average Developers per Task: ${averageDevelopersPerTask.toFixed(2)}</p>
-            <p>Adjusted Team Members (R): ${adjustedR.toFixed(2)}</p>
-            <p>Working Hours per Day (D): ${D}</p>
-            <p>Overhead Factor (O): ${O}</p>
-            <p>Efficiency (E = 1 - O): ${E.toFixed(2)}</p>
-            <p>Productivity Factor (P): ${P}</p>
-            <p>Learning Curve Factor (L): ${L}</p>
-            <p>Average Hours per Story Point (H): ${H}</p>
-            <p>Numerator (H × (S<sub>adj</sub> + Testing Effort)): ${numerator.toFixed(3)}</p>
-            <p>Denominator (Adjusted R × D × E × P × L): ${denominator.toFixed(3)}</p>
-        `;
+        if (tasks.length === 0) {
+             resultHTML = '<strong>Add tasks to estimate duration.</strong>';
+             summarySteps += '<p>No tasks added.</p>';
+        } else if (isNaN(totalAdjustedStoryPoints) || totalAdjustedStoryPoints <= 0) {
+            resultHTML = '<strong>Cannot calculate duration. Check task inputs.</strong>';
+            summarySteps += '<p>Total story points could not be calculated due to invalid task inputs.</p>';
+        } else {
+            summarySteps += `
+                <p>Total Base Story Points (Sum C<sub>i</sub>): ${totalBaseStoryPoints.toFixed(2)} SP</p>
+                <p>Total Adjusted Story Points (Incl. Testing): ${totalAdjustedStoryPoints.toFixed(2)} SP</p>
+                <p>Team Members (R): ${R}</p>
+                <p>Hours/Day/Member (D): ${D.toFixed(1)}</p>
+                <p>Overhead Factor (O): ${O.toFixed(2)}</p>
+                <p>Efficiency Factor (1 - O): ${efficiencyFactor.toFixed(2)}</p>
+                <p>Team Productivity Factor (P): ${P.toFixed(2)}</p>
+                <p>Team Maturity/Learning Factor (L): ${L.toFixed(2)}</p>
+                <p>Total Effective Team Hours/Day (R*D*(1-O)*P*L): ${effectiveHoursPerDay.toFixed(2)} hours/day</p>
+                <p>Average Hours per Story Point (H): ${H.toFixed(1)} hours/SP</p>
+            `;
+            if (teamVelocity <= 0 || isNaN(teamVelocity)) {
+                 resultHTML = '<strong>Cannot calculate duration. Check team factors (Team Size, Hours/Day, Hours/SP must be positive, Overhead < 1).</strong>';
+                 summarySteps += '<p>Calculated Team Velocity: Not applicable (check factors)</p>';
+            } else {
+                totalDuration = totalAdjustedStoryPoints / teamVelocity;
+                summarySteps += `<p>Calculated Team Velocity: ${teamVelocity.toFixed(2)} SP/day</p>`;
+                resultHTML = `<strong>Estimated Total Project Duration (T): ${totalDuration.toFixed(1)} days</strong>`;
+            }
+        }
 
-        // Display result
-        document.getElementById('result').innerHTML = `<strong>Estimated Total Project Duration (T): ${T.toFixed(2)} days</strong>`;
+        // Display calculations and result
+        calculationsDiv.innerHTML = calculationSteps + summarySteps;
+        document.getElementById('result').innerHTML = resultHTML;
     }
 
     function exportToExcel() {
-        // Prepare data
         const tasks = document.querySelectorAll('.task');
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Task Number,Title,Complexity,Risk,Priority,Duration,Developers Assigned,Adjusted Story Points,Testing Effort\n";
+        if (tasks.length === 0) {
+            alert("No tasks to export.");
+            return;
+        }
 
-        tasks.forEach((task, index) => {
-            const taskTitle = task.querySelector('.task-name').textContent;
+        let csvContent = "data:text/csv;charset=utf-8,";
+        // Add header row
+        csvContent += "Task ID,Title,Base Complexity (SP),Risk Factor,Priority (1-5),Base Duration (Days),Adjustment Factor,Adjusted Dev SP,Testing Effort SP,Total Task SP\n";
+
+        tasks.forEach((task) => {
+            const taskId = task.id.replace('task-', '');
+            const taskTitle = `"${task.querySelector('.task-name').textContent.replace(/"/g, '""')}"`; // Escape quotes
             const complexity = parseFloat(task.querySelector('.complexity').value);
             const risk = parseFloat(task.querySelector('.risk').value);
             const priority = parseInt(task.querySelector('.priority').value);
             const duration = parseFloat(task.querySelector('.duration').value);
-            const shared = task.querySelector('.shared').checked;
-            const developersAssigned = shared ? 2 : 1;
 
-            const Fi = (1 + risk) * (1 + (5 - priority) / 5) * (1 + Math.log(duration));
-            const adjustedStoryPoints = complexity * Fi;
-            const testingEffort = complexity * 0.5;
+            // Recalculate values for export consistency
+            let adjustedStoryPoints = NaN;
+            let testingEffort = NaN;
+            let Fi = NaN;
+            let taskTotalPoints = NaN;
 
-            csvContent += `${index + 1},"${taskTitle}",${complexity},${risk},${priority},${duration},${developersAssigned},${adjustedStoryPoints.toFixed(3)},${testingEffort.toFixed(2)}\n`;
+            if (!isNaN(complexity) && !isNaN(risk) && !isNaN(priority) && !isNaN(duration) &&
+                complexity > 0 && risk >= 0 && risk <= 1 && priority >= 1 && priority <= 5 && duration > 0)
+            {
+                const riskAdjustment = risk;
+                const durationUncertainty = 0.1 * Math.log(1 + duration);
+                Fi = (1 + riskAdjustment) * (1 + durationUncertainty);
+                adjustedStoryPoints = complexity * Fi;
+                const baseTestFactor = 0.15;
+                const riskTestFactor = 0.20;
+                testingEffort = adjustedStoryPoints * (baseTestFactor + riskTestFactor * risk);
+                taskTotalPoints = adjustedStoryPoints + testingEffort;
+            }
+
+            // Add row data using retrieved or calculated values
+            let row = [
+                taskId,
+                taskTitle,
+                isNaN(complexity) ? '' : complexity.toFixed(1),
+                isNaN(risk) ? '' : risk.toFixed(2),
+                isNaN(priority) ? '' : priority,
+                isNaN(duration) ? '' : duration.toFixed(1),
+                isNaN(Fi) ? '' : Fi.toFixed(3),
+                isNaN(adjustedStoryPoints) ? '' : adjustedStoryPoints.toFixed(2),
+                isNaN(testingEffort) ? '' : testingEffort.toFixed(2),
+                isNaN(taskTotalPoints) ? '' : taskTotalPoints.toFixed(2)
+            ].join(",");
+            csvContent += row + "\n";
         });
 
-        // Create a download link
+        // Create download link
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "project_estimate.csv");
-        document.body.appendChild(link); // Required for FF
-
-        link.click(); // This will download the data file
+        link.setAttribute("download", "project_estimate_tasks.csv");
+        document.body.appendChild(link); // Required for Firefox
+        link.click();
         document.body.removeChild(link);
     }
 
-    // Initial calculation
-    calculate();
+    // Initial setup
+    initializeTaskTiles();
+    calculate(); // Perform initial calculation on load
 
 </script>
 
