@@ -386,18 +386,18 @@
 
         /* Links */
         .link {
-            stroke: #9e9e9e;
-            fill: #9e9e9e; /* This provides the color for the marker */
+            fill: none;
+            stroke: currentColor;
+            color: #9e9e9e;
             stroke-width: 3;
             opacity: 0.7;
             cursor: pointer;
             pointer-events: stroke;
-            transition: stroke 0.2s, fill 0.2s;
+            transition: color 0.2s;
         }
         
         .link:hover {
-            stroke: #616161;
-            fill: #616161; /* This updates the color for the marker on hover */
+            color: #616161;
             stroke-width: 4;
             opacity: 1;
         }
@@ -410,7 +410,7 @@
         }
 
         .link-arrow {
-            fill: currentColor; /* Inherits the 'fill' property from the .link path */
+            fill: currentColor;
         }
 
         /* Context Menu */
@@ -927,12 +927,6 @@
         function updateLinks() {
             linksSvg.querySelectorAll('path').forEach(path => path.remove());
             
-            const obstacles = Object.values(workflow.items)
-                .filter(item => !item.parentId && document.getElementById(item.id))
-                .map(item => ({
-                    left: item.x, top: item.y, right: item.x + item.width, bottom: item.y + item.height, id: item.id
-                }));
-            
             workflow.links.forEach(link => {
                 const sourceItem = workflow.items[link.sourceId];
                 const targetItem = workflow.items[link.targetId];
@@ -940,15 +934,18 @@
                 
                 const startPoint = { x: sourceItem.x + sourceItem.width / 2, y: sourceItem.y + sourceItem.height };
                 const endPoint = { x: targetItem.x + targetItem.width / 2, y: targetItem.y };
-                
-                const relevantObstacles = obstacles.filter(obs => obs.id !== link.sourceId && obs.id !== link.targetId);
-                const pathPoints = findPath(startPoint, endPoint, relevantObstacles);
-                
-                let pathString = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
-                for (let i = 1; i < pathPoints.length; i++) pathString += ` L ${pathPoints[i].x} ${pathPoints[i].y}`;
-                
+
+                // --- NEW Bezier Curve Routing ---
+                const dy = endPoint.y - startPoint.y;
+                const curveOffset = Math.max(50, Math.abs(dy) * 0.4);
+
+                const cp1 = { x: startPoint.x, y: startPoint.y + curveOffset };
+                const cp2 = { x: endPoint.x, y: endPoint.y - curveOffset };
+
+                const pathString = `M ${startPoint.x} ${startPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${endPoint.x} ${endPoint.y}`;
+                // --- End of New Routing ---
+
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('fill', 'none'); // Set fill to none here
                 path.classList.add('link');
                 path.setAttribute('d', pathString);
                 path.setAttribute('marker-end', 'url(#arrowhead)');
@@ -1053,7 +1050,7 @@
             tempLinkLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             tempLinkLine.classList.add('link');
             tempLinkLine.style.strokeDasharray = '5,5';
-            tempLinkLine.style.stroke = '#1a73e8';
+            tempLinkLine.style.color = '#1a73e8';
             linksSvg.appendChild(tempLinkLine);
             
             node.classList.add('link-source');
@@ -1298,10 +1295,6 @@
         function buildHierarchy(nodes) { const hierarchy = []; nodes.forEach(node => { const hierNode = { item: node, children: [] }; const childLinks = workflow.links.filter(link => link.sourceId === node.id); childLinks.forEach(link => { const childItem = workflow.items[link.targetId]; if (childItem) hierNode.children.push(...buildHierarchy([childItem])); }); hierarchy.push(hierNode); }); return hierarchy; }
         function layoutHierarchy(hierarchy, startX, startY, spacingX, spacingY) { let currentX = startX; hierarchy.forEach((node, index) => { const subtreeWidth = calculateSubtreeWidth(node, spacingX); const centerX = currentX + subtreeWidth / 2; node.item.x = centerX - node.item.width / 2; node.item.y = startY; if (node.children.length > 0) layoutHierarchy(node.children, currentX, startY + spacingY, spacingX, spacingY); currentX += subtreeWidth + spacingX; }); }
         function calculateSubtreeWidth(node, spacing) { if (node.children.length === 0) return node.item.width; let totalWidth = 0; node.children.forEach((child, index) => { totalWidth += calculateSubtreeWidth(child, spacing); if (index < node.children.length - 1) totalWidth += spacing; }); return Math.max(node.item.width, totalWidth); }
-        function findPath(start, end, obstacles) { const path = [start]; let directPathClear = true; for (let obs of obstacles) { if (lineIntersectsRect(start, end, obs)) { directPathClear = false; break; } } if (!directPathClear) { const points = calculateOrthogonalPath(start, end, obstacles); path.push(...points.slice(1)); } else { path.push(end); } return path; }
-        function calculateOrthogonalPath(start, end, obstacles) { const points = [start]; const dx = end.x - start.x, dy = end.y - start.y; if (Math.abs(dx) > Math.abs(dy)) { const midX = start.x + dx * 0.5; points.push({ x: midX, y: start.y }, { x: midX, y: end.y }); } else { const midY = start.y + dy * 0.5; points.push({ x: start.x, y: midY }, { x: end.x, y: midY }); } points.push(end); return points; }
-        function lineIntersectsRect(p1, p2, rect) { if ((p1.x < rect.left && p2.x < rect.left) || (p1.x > rect.right && p2.x > rect.right) || (p1.y < rect.top && p2.y < rect.top) || (p1.y > rect.bottom && p2.y > rect.bottom)) return false; if ((p1.x >= rect.left && p1.x <= rect.right && p1.y >= rect.top && p1.y <= rect.bottom) || (p2.x >= rect.left && p2.x <= rect.right && p2.y >= rect.top && p2.y <= rect.bottom)) return true; const lines = [{ start: { x: rect.left, y: rect.top }, end: { x: rect.right, y: rect.top } }, { start: { x: rect.right, y: rect.top }, end: { x: rect.right, y: rect.bottom } }, { start: { x: rect.right, y: rect.bottom }, end: { x: rect.left, y: rect.bottom } }, { start: { x: rect.left, y: rect.bottom }, end: { x: rect.left, y: rect.top } }]; for (let line of lines) { if (linesIntersect(p1, p2, line.start, line.end)) return true; } return false; }
-        function linesIntersect(p1, p2, p3, p4) { const d = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y); if (d === 0) return false; const ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / d; const ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / d; return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1; }
         function toggleNode(node) { const item = workflow.items[node.id]; if (!item) return; node.classList.toggle('expanded'); item.data.isExpanded = node.classList.contains('expanded'); updateLinks(); autoSave(); }
         function editTitle(titleEl, item, e) { e.stopPropagation(); const oldTitle = titleEl.textContent; titleEl.contentEditable = true; titleEl.focus(); const range = document.createRange(); range.selectNodeContents(titleEl); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); const save = () => { titleEl.contentEditable = false; const newTitle = titleEl.textContent.trim(); if (newTitle) { item.data.title = newTitle; autoSave(); } else { titleEl.textContent = oldTitle; } }; titleEl.addEventListener('blur', save, { once: true }); titleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { titleEl.textContent = oldTitle; save(); } }); }
         function handleMenuClick(e) { const menuItem = e.target.closest('.menu-item'); if (!menuItem) return; const action = menuItem.dataset.action; contextMenu.style.display = 'none'; if (action === 'paste') { navigator.clipboard.readText().then(text => { if (text) { const id = `item-${workflow.nextItemId++}`; const pasteItem = { id, type: 'data', x: contextMenuPos.x, y: contextMenuPos.y, width: 300, height: 200, data: { title: 'Pasted Text', dataType: 'text', content: text }, parentId: null }; workflow.items[id] = pasteItem; createNode(pasteItem); autoSave(); } }).catch(err => console.log('Paste from context menu requires clipboard permissions')); contextMenuPos.groupId = null; return; } let type = null; switch (action) { case 'add-scribble': type = 'scribble'; break; case 'add-task': type = 'task'; break; case 'add-group': type = 'group'; break; case 'add-estimator': type = 'estimator'; break; case 'add-knowledge-section': type = 'knowledge-section'; break; case 'add-knowledge-subsection': type = 'knowledge-subsection'; break; case 'add-knowledge-item': type = 'knowledge-item'; break; case 'add-adr': type = 'adr'; break; } if (type) addNode(type, contextMenuPos.x, contextMenuPos.y); contextMenuPos.groupId = null; }
