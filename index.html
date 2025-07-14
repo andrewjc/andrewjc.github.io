@@ -1211,17 +1211,33 @@
         }
 
         function toggleInlineNode(childId, parentId) {
-            const parentNode = document.getElementById(parentId);
+            // Find the parent node, whether it's a top-level node or an inline one
+            const parentNode = document.getElementById(parentId) || document.getElementById(`inline-${parentId}`);
             const parentItem = workflow.items[parentId];
-            if (!parentNode || !parentItem) return;
             
-            if (expandedInlineNodes[childId]) delete expandedInlineNodes[childId];
-            else expandedInlineNodes[childId] = true;
+            // If we can't find the parent in the DOM or the data, we can't proceed.
+            if (!parentNode || !parentItem) {
+                console.error("Could not find parent node or item for toggling inline node.", { parentId });
+                return;
+            }
             
+            // Toggle the expanded state for the child
+            if (expandedInlineNodes[childId]) {
+                delete expandedInlineNodes[childId];
+            } else {
+                expandedInlineNodes[childId] = true;
+            }
+            
+            // Re-render the content of the parent group
             const content = parentNode.querySelector('.node-content');
-            content.innerHTML = createGroupContent(parentItem);
-            setupInputListeners(parentNode, parentItem);
-            autoSave();
+            if (content) {
+                content.innerHTML = createGroupContent(parentItem);
+                // Re-attach listeners to the newly created content within the parent
+                setupInputListeners(parentNode, parentItem);
+                autoSave();
+            } else {
+                console.error("Could not find content area in parent node.", { parentId });
+            }
         }
 
         // --- Utility & Helper Functions ---
