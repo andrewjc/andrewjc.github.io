@@ -522,6 +522,8 @@
             left: 0;
             pointer-events: none;
             z-index: 1;
+            width: 100%;
+            height: 100%;
         }
 
         .link {
@@ -1399,39 +1401,261 @@
             return Math.max(node.item.width, totalWidth);
         }
 
-        // Pathfinding for arrows
+        // Advanced Pathfinding for arrows
         function findPath(startPoint, endPoint, obstacles) {
-            // Simple implementation - just avoid direct overlap
+            // Calculate the path using orthogonal routing (Manhattan routing)
             const path = [];
             path.push(startPoint);
             
-            // Check if direct path intersects any obstacles
-            let needsRouting = false;
-            obstacles.forEach(obstacle => {
+            // Check if we need to route around obstacles
+            let directPathClear = true;
+            for (let obstacle of obstacles) {
                 if (lineIntersectsRect(startPoint, endPoint, obstacle)) {
-                    needsRouting = true;
+                    directPathClear = false;
+                    break;
                 }
-            });
-            
-            if (needsRouting) {
-                // Create waypoints around obstacles
-                const midY = (startPoint.y + endPoint.y) / 2;
-                path.push({ x: startPoint.x, y: midY });
-                path.push({ x: endPoint.x, y: midY });
             }
             
-            path.push(endPoint);
+            if (!directPathClear) {
+                // Use orthogonal routing with smart waypoint selection
+                const points = calculateOrthogonalPath(startPoint, endPoint, obstacles);
+                path.push(...points.slice(1)); // Skip start point as it's already added
+            } else {
+                path.push(endPoint);
+            }
+            
             return path;
         }
 
-        function lineIntersectsRect(p1, p2, rect) {
-            // Simple bounding box check
-            const minX = Math.min(p1.x, p2.x);
-            const maxX = Math.max(p1.x, p2.x);
-            const minY = Math.min(p1.y, p2.y);
-            const maxY = Math.max(p1.y, p2.y);
+        function calculateOrthogonalPath(start, end, obstacles) {
+            // Create a routing grid with channels between obstacles
+            const margin = 20; // Space to keep from obstacles
+            const points = [start];
             
-            return !(rect.right < minX || rect.left > maxX || rect.bottom < minY || rect.top > maxY);
+            // Determine primary routing direction
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            
+            // Try different routing strategies
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal first, then vertical
+                const midX = start.x + dx * 0.7;
+                const waypoint1 = { x: midX, y: start.y };
+                const waypoint2 = { x: midX, y: end.y };
+                
+                // Check if this path is clear
+                let pathClear = true;
+                const testPath = [start, waypoint1, waypoint2, end];
+                for (let i = 0; i < testPath.length - 1; i++) {
+                    for (let obstacle of obstacles) {
+                        if (lineIntersectsRect(testPath[i], testPath[i + 1], obstacle)) {
+                            pathClear = false;
+                            break;
+                        }
+                    }
+                    if (!pathClear) break;
+                }
+                
+                if (pathClear) {
+                    points.push(waypoint1, waypoint2);
+                } else {
+                    // Find alternative path around obstacles
+                    const altPath = findAlternativeRoute(start, end, obstacles, margin);
+                    points.push(...altPath.slice(1));
+                }
+            } else {
+                // Vertical first, then horizontal
+                const midY = start.y + dy * 0.7;
+                const waypoint1 = { x: start.x, y: midY };
+                const waypoint2 = { x: end.x, y: midY };
+                
+                // Check if this path is clear
+                let pathClear = true;
+                const testPath = [start, waypoint1, waypoint2, end];
+                for (let i = 0; i < testPath.length - 1; i++) {
+                    for (let obstacle of obstacles) {
+                        if (lineIntersectsRect(testPath[i], testPath[i + 1], obstacle)) {
+                            pathClear = false;
+                            break;
+                        }
+                    }
+                    if (!pathClear) break;
+                }
+                
+                if (pathClear) {
+                    points.push(waypoint1, waypoint2);
+                } else {
+                    // Find alternative path around obstacles
+                    const altPath = findAlternativeRoute(start, end, obstacles, margin);
+                    points.push(...altPath.slice(1));
+                }
+            }
+            
+            points.push(end);
+            return points;
+        }
+
+        function findAlternativeRoute(start, end, obstacles, margin) {
+            // Find the best route around obstacles
+            const routes = [];
+            
+            // Try going around each obstacle
+            obstacles.forEach(obstacle => {
+                // Check if this obstacle is between start and end
+                if (!isObstacleBetween(start, end, obstacle)) return;
+                
+                // Calculate routes around the obstacle
+                const topRoute = {
+                    points: [
+                        start,
+                        { x: obstacle.left - margin, y: start.y },
+                        { x: obstacle.left - margin, y: obstacle.top - margin },
+                        { x: end.x, y: obstacle.top - margin },
+                        end
+                    ],
+                    distance: 0
+                };
+                
+                const bottomRoute = {
+                    points: [
+                        start,
+                        { x: obstacle.left - margin, y: start.y },
+                        { x: obstacle.left - margin, y: obstacle.bottom + margin },
+                        { x: end.x, y: obstacle.bottom + margin },
+                        end
+                    ],
+                    distance: 0
+                };
+                
+                const leftRoute = {
+                    points: [
+                        start,
+                        { x: start.x, y: obstacle.top - margin },
+                        { x: obstacle.left - margin, y: obstacle.top - margin },
+                        { x: obstacle.left - margin, y: end.y },
+                        end
+                    ],
+                    distance: 0
+                };
+                
+                const rightRoute = {
+                    points: [
+                        start,
+                        { x: start.x, y: obstacle.top - margin },
+                        { x: obstacle.right + margin, y: obstacle.top - margin },
+                        { x: obstacle.right + margin, y: end.y },
+                        end
+                    ],
+                    distance: 0
+                };
+                
+                // Calculate distances
+                [topRoute, bottomRoute, leftRoute, rightRoute].forEach(route => {
+                    route.distance = calculatePathDistance(route.points);
+                });
+                
+                routes.push(topRoute, bottomRoute, leftRoute, rightRoute);
+            });
+            
+            // If no specific obstacle routing needed, use simple orthogonal path
+            if (routes.length === 0) {
+                return [
+                    start,
+                    { x: start.x, y: end.y },
+                    end
+                ];
+            }
+            
+            // Return the shortest valid route
+            routes.sort((a, b) => a.distance - b.distance);
+            for (let route of routes) {
+                if (isPathClear(route.points, obstacles)) {
+                    return route.points;
+                }
+            }
+            
+            // Fallback to simple path
+            return [start, { x: start.x, y: end.y }, end];
+        }
+
+        function isObstacleBetween(start, end, obstacle) {
+            // Check if obstacle is roughly between start and end points
+            const minX = Math.min(start.x, end.x);
+            const maxX = Math.max(start.x, end.x);
+            const minY = Math.min(start.y, end.y);
+            const maxY = Math.max(start.y, end.y);
+            
+            return obstacle.left < maxX && obstacle.right > minX &&
+                   obstacle.top < maxY && obstacle.bottom > minY;
+        }
+
+        function calculatePathDistance(points) {
+            let distance = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                const dx = points[i + 1].x - points[i].x;
+                const dy = points[i + 1].y - points[i].y;
+                distance += Math.sqrt(dx * dx + dy * dy);
+            }
+            return distance;
+        }
+
+        function isPathClear(points, obstacles) {
+            for (let i = 0; i < points.length - 1; i++) {
+                for (let obstacle of obstacles) {
+                    if (lineIntersectsRect(points[i], points[i + 1], obstacle)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function lineIntersectsRect(p1, p2, rect) {
+            // Check if a line segment intersects with a rectangle
+            // Using line-rectangle intersection algorithm
+            
+            // Check if line is completely outside rectangle bounds
+            if ((p1.x < rect.left && p2.x < rect.left) ||
+                (p1.x > rect.right && p2.x > rect.right) ||
+                (p1.y < rect.top && p2.y < rect.top) ||
+                (p1.y > rect.bottom && p2.y > rect.bottom)) {
+                return false;
+            }
+            
+            // Check if either endpoint is inside the rectangle
+            if ((p1.x >= rect.left && p1.x <= rect.right && 
+                 p1.y >= rect.top && p1.y <= rect.bottom) ||
+                (p2.x >= rect.left && p2.x <= rect.right && 
+                 p2.y >= rect.top && p2.y <= rect.bottom)) {
+                return true;
+            }
+            
+            // Check line intersection with rectangle edges
+            const lines = [
+                { start: { x: rect.left, y: rect.top }, end: { x: rect.right, y: rect.top } },
+                { start: { x: rect.right, y: rect.top }, end: { x: rect.right, y: rect.bottom } },
+                { start: { x: rect.right, y: rect.bottom }, end: { x: rect.left, y: rect.bottom } },
+                { start: { x: rect.left, y: rect.bottom }, end: { x: rect.left, y: rect.top } }
+            ];
+            
+            for (let line of lines) {
+                if (linesIntersect(p1, p2, line.start, line.end)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        function linesIntersect(p1, p2, p3, p4) {
+            // Check if two line segments intersect
+            const d = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+            if (d === 0) return false; // Parallel lines
+            
+            const ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / d;
+            const ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / d;
+            
+            return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
         }
 
         // Markdown parser
@@ -1777,6 +2001,10 @@
         function updateViewportTransform() {
             viewport.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
             zoomIndicator.textContent = Math.round(scale * 100) + '%';
+            
+            // Update the SVG transform to match
+            linksSvg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+            
             updateLinks();
             autoSave();
         }
@@ -1920,24 +2148,30 @@
             autoSave();
         }
 
-        // Links with pathfinding
+        // Fixed Links update function
         function updateLinks() {
-            linksSvg.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" class="link-arrow"/></marker></defs>';
+            // Clear existing paths
+            const existingPaths = linksSvg.querySelectorAll('path');
+            existingPaths.forEach(path => path.remove());
             
-            // Get all visible nodes as obstacles
+            // Get all visible nodes as obstacles (in unscaled coordinates)
             const obstacles = [];
             Object.values(workflow.items).forEach(item => {
-                const node = document.getElementById(item.id);
-                if (node && node.style.display !== 'none') {
-                    obstacles.push({
-                        left: item.x * scale + translateX,
-                        top: item.y * scale + translateY,
-                        right: (item.x + item.width) * scale + translateX,
-                        bottom: (item.y + item.height) * scale + translateY
-                    });
+                if (!item.parentId) { // Only consider top-level nodes
+                    const node = document.getElementById(item.id);
+                    if (node && node.style.display !== 'none') {
+                        obstacles.push({
+                            left: item.x,
+                            top: item.y,
+                            right: item.x + item.width,
+                            bottom: item.y + item.height,
+                            id: item.id
+                        });
+                    }
                 }
             });
             
+            // Draw links
             workflow.links.forEach(link => {
                 const source = document.getElementById(link.sourceId);
                 const target = document.getElementById(link.targetId);
@@ -1952,24 +2186,24 @@
                 
                 if (!sourceItem || !targetItem) return;
                 
-                // Calculate connection points
+                // Calculate connection points (in unscaled coordinates)
                 const startPoint = {
-                    x: (sourceItem.x + sourceItem.width / 2) * scale + translateX,
-                    y: (sourceItem.y + sourceItem.height) * scale + translateY
+                    x: sourceItem.x + sourceItem.width / 2,
+                    y: sourceItem.y + sourceItem.height
                 };
                 const endPoint = {
-                    x: (targetItem.x + targetItem.width / 2) * scale + translateX,
-                    y: targetItem.y * scale + translateY
+                    x: targetItem.x + targetItem.width / 2,
+                    y: targetItem.y
                 };
                 
-                // Find path avoiding obstacles
-                const pathPoints = findPath(startPoint, endPoint, obstacles.filter(obs => {
-                    // Don't avoid the source and target nodes
-                    return obs !== obstacles[workflow.items[link.sourceId]] && 
-                           obs !== obstacles[workflow.items[link.targetId]];
-                }));
+                // Find path avoiding obstacles (but not the source and target)
+                const relevantObstacles = obstacles.filter(obs => 
+                    obs.id !== link.sourceId && obs.id !== link.targetId
+                );
                 
-                // Create path string
+                const pathPoints = findPath(startPoint, endPoint, relevantObstacles);
+                
+                // Create SVG path
                 let pathString = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
                 for (let i = 1; i < pathPoints.length; i++) {
                     pathString += ` L ${pathPoints[i].x} ${pathPoints[i].y}`;
@@ -1982,11 +2216,6 @@
                 
                 linksSvg.appendChild(path);
             });
-            
-            // Update SVG size to match viewport
-            const viewportRect = viewport.getBoundingClientRect();
-            linksSvg.setAttribute('width', viewportRect.width);
-            linksSvg.setAttribute('height', viewportRect.height);
         }
 
         // Input listeners
