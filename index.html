@@ -120,7 +120,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             cursor: default;
-            transition: box-shadow 0.2s, transform 0.2s;
+            transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -551,6 +551,7 @@
         .link {
             fill: none;
             stroke: #9e9e9e;
+            color: #9e9e9e;
             stroke-width: 3;
             opacity: 0.7;
             cursor: pointer;
@@ -559,6 +560,7 @@
         
         .link:hover {
             stroke: #616161;
+            color: #616161;
             stroke-width: 4;
             opacity: 1;
         }
@@ -571,7 +573,7 @@
         }
 
         .link-arrow {
-            fill: #9e9e9e;
+            fill: currentColor;
             opacity: 0.7;
         }
 
@@ -734,6 +736,42 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+
+        /* Selection Rectangle */
+        #selection-rect {
+            position: absolute;
+            border: 1px dashed #1a73e8;
+            background: rgba(26, 115, 232, 0.1);
+            pointer-events: none;
+            z-index: 999;
+            display: none;
+        }
+
+        /* Modal Styles */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        #modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow: auto;
+            position: relative;
+            display: flex;
+        }
     </style>
 </head>
 <body>
@@ -782,27 +820,34 @@
         <span>•</span>
         <span>Alt+drag to link nodes</span>
         <span>•</span>
-        <span>Drag background to pan</span>
+        <span>Ctrl+drag to select</span>
         <span>•</span>
         <span>Scroll to zoom</span>
-        <span>•</span>
-        <span>Auto-saves to browser</span>
     </div>
 
     <div id="zoom-indicator">100%</div>
 
     <div id="loading">Loading workflow...</div>
 
+    <div id="selection-rect"></div>
+
+    <div id="modal-overlay">
+        <div id="modal-content"></div>
+    </div>
+
     <script>
         // State management
         let workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
         let selectedNode = null;
+        let selectedNodes = [];
         let isDragging = false;
         let isResizing = false;
         let isLinking = false;
+        let isSelecting = false;
         let linkSource = null;
         let tempLinkLine = null;
         let dragOffset = { x: 0, y: 0 };
+        let selectStart = { x: 0, y: 0 };
         let contextMenuPos = { x: 0, y: 0, groupId: null };
         let groups = {};
         let expandedInlineNodes = {}; // Track which nodes are expanded inline
@@ -833,6 +878,9 @@
         const clearBtn = document.getElementById('clear-btn');
         const loading = document.getElementById('loading');
         const zoomIndicator = document.getElementById('zoom-indicator');
+        const selectionRect = document.getElementById('selection-rect');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
 
         // Node templates
         const nodeIcons = {
@@ -877,15 +925,15 @@
             }
         });
 
-        // Canvas event listeners - events bubble up from viewport
+        // Canvas event listeners
         canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.addEventListener('click', handleCanvasClick);
         canvas.addEventListener('wheel', handleWheel);
-        canvas.addEventListener('mousedown', handlePanStart);
-        canvas.addEventListener('mousemove', handlePan);
-        canvas.addEventListener('mouseup', handlePanEnd);
-        canvas.addEventListener('mouseleave', handlePanEnd);
-        canvas.addEventListener('scroll', () => autoSave()); // Save scroll position
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        canvas.addEventListener('mouseleave', handleMouseUp);
+        canvas.addEventListener('scroll', () => autoSave());
         canvas.addEventListener('dragover', handleDragOver);
         canvas.addEventListener('drop', handleDrop);
         document.addEventListener('paste', handlePaste);
@@ -893,6 +941,16 @@
         // Context menu listeners
         contextMenu.addEventListener('click', handleMenuClick);
         
+        // Modal overlay click to close
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                closeModal();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', handleKeyboard);
+
         // Drag and drop handling
         function handleDragOver(e) {
             e.preventDefault();
@@ -960,13 +1018,9 @@
             });
         }
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', handleKeyboard);
-
         // Storage functions
         function saveToLocalStorage() {
             try {
-                // Update children arrays in group data before saving
                 Object.keys(groups).forEach(groupId => {
                     if (workflow.items[groupId]) {
                         workflow.items[groupId].data.children = groups[groupId];
@@ -997,21 +1051,16 @@
                 
                 const state = JSON.parse(savedState);
                 
-                // Load workflow data
                 workflow = state.workflow || { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
                 groups = state.groups || {};
                 expandedInlineNodes = state.expandedInlineNodes || {};
-                
-                // Load view state
                 scale = state.scale || 1;
                 translateX = state.translateX || 0;
                 translateY = state.translateY || 0;
                 
-                // Render workflow
                 renderWorkflow();
                 updateViewportTransform();
                 
-                // Restore scroll position after a small delay to ensure DOM is ready
                 setTimeout(() => {
                     if (state.scrollLeft) canvas.scrollLeft = state.scrollLeft;
                     if (state.scrollTop) canvas.scrollTop = state.scrollTop;
@@ -1024,18 +1073,14 @@
             }
         }
         
-        // Auto-save on changes
         let saveTimeout;
         function autoSave() {
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(() => {
-                saveToLocalStorage();
-            }, 100); // Debounce saves by 100ms
+            saveTimeout = setTimeout(saveToLocalStorage, 100);
         }
 
         // File handling
         function saveWorkflow() {
-            // Update children arrays in group data before saving
             Object.keys(groups).forEach(groupId => {
                 if (workflow.items[groupId]) {
                     workflow.items[groupId].data.children = groups[groupId];
@@ -1075,7 +1120,6 @@
                         nextLinkId: data.nextLinkId || 1
                     };
                     
-                    // Build groups from children arrays and parentId
                     groups = {};
                     expandedInlineNodes = {};
                     Object.values(workflow.items).forEach(item => {
@@ -1088,8 +1132,6 @@
                     loading.style.display = 'none';
                     updateViewportTransform();
                     fitToScreen();
-                    
-                    // Save the loaded workflow
                     autoSave();
                 } catch (error) {
                     alert('Error loading workflow: ' + error.message);
@@ -1102,34 +1144,28 @@
 
         // Render workflow
         function renderWorkflow() {
-            // Clear existing content
             viewport.querySelectorAll('.node').forEach(node => node.remove());
-            
-            // Create top-level nodes only (not children of groups)
             Object.values(workflow.items).forEach(item => {
                 if (!item.parentId) {
                     createNode(item);
                 }
             });
-            
-            // Update links
             updateLinks();
         }
 
         // Create node
-        function createNode(item, isInline = false, parentElement = null) {
+        function createNode(item, isInline = false, parentElement = null, isModal = false) {
             const node = document.createElement('div');
             node.className = `node ${item.type}${isInline ? ' inline-node' : ''}`;
-            node.id = isInline ? `inline-${item.id}` : item.id;
+            node.id = isInline ? `inline-${item.id}` : (isModal ? `modal-${item.id}` : item.id);
             
-            if (!isInline) {
+            if (!isInline && !isModal) {
                 node.style.left = item.x + 'px';
                 node.style.top = item.y + 'px';
             }
             node.style.width = item.width + 'px';
             node.style.height = item.height + 'px';
             
-            // Header
             const header = document.createElement('div');
             header.className = 'node-header';
             
@@ -1144,8 +1180,7 @@
             const controls = document.createElement('div');
             controls.className = 'node-controls';
             
-            // Add expand control for expandable types (only for non-inline)
-            if (hasExpandableContent(item) && !isInline) {
+            if (hasExpandableContent(item) && !isInline && !isModal) {
                 const expandBtn = document.createElement('div');
                 expandBtn.className = 'node-control expand-icon';
                 expandBtn.innerHTML = '▶';
@@ -1156,8 +1191,7 @@
                 controls.appendChild(expandBtn);
             }
             
-            // Delete Button (only for non-inline)
-            if (!isInline) {
+            if (!isInline && !isModal) {
                 const deleteBtn = document.createElement('div');
                 deleteBtn.className = 'node-control';
                 deleteBtn.innerHTML = '✕';
@@ -1170,17 +1204,20 @@
                 controls.appendChild(deleteBtn);
             }
             
-            // Add collapse button for inline nodes
-            if (isInline) {
+            if (isInline || isModal) {
                 const collapseBtn = document.createElement('div');
                 collapseBtn.className = 'inline-collapse-btn';
                 collapseBtn.innerHTML = '◀';
-                collapseBtn.title = 'Collapse to icon';
+                collapseBtn.title = isModal ? 'Close' : 'Collapse to icon';
                 collapseBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const parentId = item.parentId;
-                    if (parentId) {
-                        toggleInlineNode(item.id, parentId);
+                    if (isModal) {
+                        closeModal();
+                    } else {
+                        const parentId = item.parentId;
+                        if (parentId) {
+                            toggleInlineNode(item.id, parentId);
+                        }
                     }
                 });
                 header.appendChild(collapseBtn);
@@ -1190,45 +1227,20 @@
             header.appendChild(title);
             header.appendChild(controls);
             
-            // Content
             const content = document.createElement('div');
             content.className = 'node-content';
             
-            // Create content based on type
             switch (item.type) {
-                case 'scribble':
-                    content.innerHTML = `<textarea class="scribble-content">${item.data.content || ''}</textarea>`;
-                    break;
-                    
-                case 'task':
-                    content.innerHTML = createTaskContent(item.data);
-                    break;
-                    
-                case 'estimator':
-                    content.innerHTML = createEstimatorContent(item.data);
-                    break;
-                    
-                case 'data':
-                    content.innerHTML = createDataContent(item.data);
-                    break;
-                    
-                case 'group':
-                    content.innerHTML = createGroupContent(item);
-                    break;
-                    
-                case 'knowledge-section':
-                case 'knowledge-subsection':
-                case 'knowledge-item':
-                    content.innerHTML = `<textarea class="knowledge-content">${item.data.content || ''}</textarea>`;
-                    break;
-                    
-                case 'adr':
-                    content.innerHTML = createADRContent(item.data);
-                    break;
+                case 'scribble': content.innerHTML = `<textarea class="scribble-content">${item.data.content || ''}</textarea>`; break;
+                case 'task': content.innerHTML = createTaskContent(item.data); break;
+                case 'estimator': content.innerHTML = createEstimatorContent(item.data); break;
+                case 'data': content.innerHTML = createDataContent(item.data); break;
+                case 'group': content.innerHTML = createGroupContent(item); break;
+                case 'knowledge-section': case 'knowledge-subsection': case 'knowledge-item': content.innerHTML = `<textarea class="knowledge-content">${item.data.content || ''}</textarea>`; break;
+                case 'adr': content.innerHTML = createADRContent(item.data); break;
             }
             
-            // Resize handle (only for non-inline nodes)
-            if (!isInline) {
+            if (!isInline && !isModal) {
                 const resizeHandle = document.createElement('div');
                 resizeHandle.className = 'resize-handle';
                 node.appendChild(resizeHandle);
@@ -1238,15 +1250,13 @@
             node.appendChild(header);
             node.appendChild(content);
             
-            // Event listeners
-            if (!isInline) {
+            if (!isInline && !isModal) {
                 node.addEventListener('click', (e) => selectNode(node, e));
                 header.addEventListener('mousedown', (e) => startDrag(node, e));
             }
             title.addEventListener('dblclick', (e) => editTitle(title, item, e));
             
-            // Double-click to expand (only for non-inline nodes)
-            if (hasExpandableContent(item) && !isInline) {
+            if (hasExpandableContent(item) && !isInline && !isModal) {
                 node.addEventListener('dblclick', (e) => {
                     if (!e.target.classList.contains('node-title')) {
                         toggleNode(node);
@@ -1254,16 +1264,15 @@
                 });
             }
             
-            // Restore expanded state
-            if (item.data.isExpanded || (isInline && expandedInlineNodes[item.id])) {
+            if (item.data.isExpanded || (isInline && expandedInlineNodes[item.id]) || isModal) {
                 node.classList.add('expanded');
             }
             
-            // Setup change listeners for inputs
             setupInputListeners(node, item);
             
-            // Add to appropriate parent
-            if (isInline && parentElement) {
+            if (isModal) {
+                modalContent.appendChild(node);
+            } else if (isInline && parentElement) {
                 parentElement.appendChild(node);
             } else {
                 viewport.appendChild(node);
@@ -1342,17 +1351,13 @@
             const groupContent = document.createElement('div');
             groupContent.className = 'group-content';
             
-            // Create child icons
             children.forEach(childId => {
                 const childItem = workflow.items[childId];
                 if (!childItem) return;
                 
-                // Check if this child is already expanded inline
                 if (expandedInlineNodes[childId]) {
-                    // Create inline expanded node
-                    const inlineNode = createNode(childItem, true, groupContent);
+                    createNode(childItem, true, groupContent);
                 } else {
-                    // Create icon
                     const childIcon = document.createElement('div');
                     childIcon.className = 'group-child-icon';
                     childIcon.dataset.childId = childId;
@@ -1368,7 +1373,12 @@
                     childIcon.appendChild(iconSymbol);
                     childIcon.appendChild(iconTitle);
                     
-                    // Double-click to expand inline
+                    childIcon.addEventListener('click', (e) => {
+                        if (e.ctrlKey || e.metaKey) {
+                            e.stopPropagation();
+                            openNodeInModal(childId);
+                        }
+                    });
                     childIcon.addEventListener('dblclick', (e) => {
                         e.stopPropagation();
                         toggleInlineNode(childId, item.id);
@@ -1406,20 +1416,14 @@
             if (!parentItem) return;
             
             if (expandedInlineNodes[childId]) {
-                // Collapse
                 delete expandedInlineNodes[childId];
             } else {
-                // Expand
                 expandedInlineNodes[childId] = true;
             }
             
-            // Recreate group content
             const content = parentNode.querySelector('.node-content');
             content.innerHTML = createGroupContent(parentItem);
-            
-            // Re-setup input listeners for any inputs in the recreated content
             setupInputListeners(parentNode, parentItem);
-            
             autoSave();
         }
 
@@ -1428,10 +1432,8 @@
             const rootNodes = Object.values(workflow.items).filter(item => !item.parentId);
             if (rootNodes.length === 0) return;
             
-            // Build hierarchy
             const hierarchy = buildHierarchy(rootNodes);
             
-            // Calculate positions using tree layout
             const nodeSpacingX = 350;
             const nodeSpacingY = 250;
             const startX = 100;
@@ -1439,7 +1441,6 @@
             
             layoutHierarchy(hierarchy, startX, startY, nodeSpacingX, nodeSpacingY);
             
-            // Update node positions in DOM
             Object.values(workflow.items).forEach(item => {
                 const node = document.getElementById(item.id);
                 if (node && !node.classList.contains('inline-node')) {
@@ -1461,7 +1462,6 @@
                     children: []
                 };
                 
-                // Find all nodes that link from this node
                 const childLinks = workflow.links.filter(link => link.sourceId === node.id);
                 childLinks.forEach(link => {
                     const childItem = workflow.items[link.targetId];
@@ -1483,11 +1483,9 @@
                 const subtreeWidth = calculateSubtreeWidth(node, spacingX);
                 const centerX = currentX + subtreeWidth / 2;
                 
-                // Position this node
                 node.item.x = centerX - node.item.width / 2;
                 node.item.y = startY;
                 
-                // Layout children
                 if (node.children.length > 0) {
                     layoutHierarchy(node.children, currentX, startY + spacingY, spacingX, spacingY);
                 }
@@ -1514,11 +1512,9 @@
 
         // Advanced Pathfinding for arrows
         function findPath(startPoint, endPoint, obstacles) {
-            // Calculate the path using orthogonal routing (Manhattan routing)
             const path = [];
             path.push(startPoint);
             
-            // Check if we need to route around obstacles
             let directPathClear = true;
             for (let obstacle of obstacles) {
                 if (lineIntersectsRect(startPoint, endPoint, obstacle)) {
@@ -1528,9 +1524,8 @@
             }
             
             if (!directPathClear) {
-                // Use orthogonal routing with smart waypoint selection
                 const points = calculateOrthogonalPath(startPoint, endPoint, obstacles);
-                path.push(...points.slice(1)); // Skip start point as it's already added
+                path.push(...points.slice(1));
             } else {
                 path.push(endPoint);
             }
@@ -1539,193 +1534,23 @@
         }
 
         function calculateOrthogonalPath(start, end, obstacles) {
-            // Create a routing grid with channels between obstacles
-            const margin = 20; // Space to keep from obstacles
             const points = [start];
-            
-            // Determine primary routing direction
             const dx = end.x - start.x;
             const dy = end.y - start.y;
             
-            // Try different routing strategies
             if (Math.abs(dx) > Math.abs(dy)) {
-                // Horizontal first, then vertical
-                const midX = start.x + dx * 0.7;
-                const waypoint1 = { x: midX, y: start.y };
-                const waypoint2 = { x: midX, y: end.y };
-                
-                // Check if this path is clear
-                let pathClear = true;
-                const testPath = [start, waypoint1, waypoint2, end];
-                for (let i = 0; i < testPath.length - 1; i++) {
-                    for (let obstacle of obstacles) {
-                        if (lineIntersectsRect(testPath[i], testPath[i + 1], obstacle)) {
-                            pathClear = false;
-                            break;
-                        }
-                    }
-                    if (!pathClear) break;
-                }
-                
-                if (pathClear) {
-                    points.push(waypoint1, waypoint2);
-                } else {
-                    // Find alternative path around obstacles
-                    const altPath = findAlternativeRoute(start, end, obstacles, margin);
-                    points.push(...altPath.slice(1));
-                }
+                const midX = start.x + dx * 0.5;
+                points.push({ x: midX, y: start.y }, { x: midX, y: end.y });
             } else {
-                // Vertical first, then horizontal
-                const midY = start.y + dy * 0.7;
-                const waypoint1 = { x: start.x, y: midY };
-                const waypoint2 = { x: end.x, y: midY };
-                
-                // Check if this path is clear
-                let pathClear = true;
-                const testPath = [start, waypoint1, waypoint2, end];
-                for (let i = 0; i < testPath.length - 1; i++) {
-                    for (let obstacle of obstacles) {
-                        if (lineIntersectsRect(testPath[i], testPath[i + 1], obstacle)) {
-                            pathClear = false;
-                            break;
-                        }
-                    }
-                    if (!pathClear) break;
-                }
-                
-                if (pathClear) {
-                    points.push(waypoint1, waypoint2);
-                } else {
-                    // Find alternative path around obstacles
-                    const altPath = findAlternativeRoute(start, end, obstacles, margin);
-                    points.push(...altPath.slice(1));
-                }
+                const midY = start.y + dy * 0.5;
+                points.push({ x: start.x, y: midY }, { x: end.x, y: midY });
             }
             
             points.push(end);
             return points;
         }
 
-        function findAlternativeRoute(start, end, obstacles, margin) {
-            // Find the best route around obstacles
-            const routes = [];
-            
-            // Try going around each obstacle
-            obstacles.forEach(obstacle => {
-                // Check if this obstacle is between start and end
-                if (!isObstacleBetween(start, end, obstacle)) return;
-                
-                // Calculate routes around the obstacle
-                const topRoute = {
-                    points: [
-                        start,
-                        { x: obstacle.left - margin, y: start.y },
-                        { x: obstacle.left - margin, y: obstacle.top - margin },
-                        { x: end.x, y: obstacle.top - margin },
-                        end
-                    ],
-                    distance: 0
-                };
-                
-                const bottomRoute = {
-                    points: [
-                        start,
-                        { x: obstacle.left - margin, y: start.y },
-                        { x: obstacle.left - margin, y: obstacle.bottom + margin },
-                        { x: end.x, y: obstacle.bottom + margin },
-                        end
-                    ],
-                    distance: 0
-                };
-                
-                const leftRoute = {
-                    points: [
-                        start,
-                        { x: start.x, y: obstacle.top - margin },
-                        { x: obstacle.left - margin, y: obstacle.top - margin },
-                        { x: obstacle.left - margin, y: end.y },
-                        end
-                    ],
-                    distance: 0
-                };
-                
-                const rightRoute = {
-                    points: [
-                        start,
-                        { x: start.x, y: obstacle.top - margin },
-                        { x: obstacle.right + margin, y: obstacle.top - margin },
-                        { x: obstacle.right + margin, y: end.y },
-                        end
-                    ],
-                    distance: 0
-                };
-                
-                // Calculate distances
-                [topRoute, bottomRoute, leftRoute, rightRoute].forEach(route => {
-                    route.distance = calculatePathDistance(route.points);
-                });
-                
-                routes.push(topRoute, bottomRoute, leftRoute, rightRoute);
-            });
-            
-            // If no specific obstacle routing needed, use simple orthogonal path
-            if (routes.length === 0) {
-                return [
-                    start,
-                    { x: start.x, y: end.y },
-                    end
-                ];
-            }
-            
-            // Return the shortest valid route
-            routes.sort((a, b) => a.distance - b.distance);
-            for (let route of routes) {
-                if (isPathClear(route.points, obstacles)) {
-                    return route.points;
-                }
-            }
-            
-            // Fallback to simple path
-            return [start, { x: start.x, y: end.y }, end];
-        }
-
-        function isObstacleBetween(start, end, obstacle) {
-            // Check if obstacle is roughly between start and end points
-            const minX = Math.min(start.x, end.x);
-            const maxX = Math.max(start.x, end.x);
-            const minY = Math.min(start.y, end.y);
-            const maxY = Math.max(start.y, end.y);
-            
-            return obstacle.left < maxX && obstacle.right > minX &&
-                   obstacle.top < maxY && obstacle.bottom > minY;
-        }
-
-        function calculatePathDistance(points) {
-            let distance = 0;
-            for (let i = 0; i < points.length - 1; i++) {
-                const dx = points[i + 1].x - points[i].x;
-                const dy = points[i + 1].y - points[i].y;
-                distance += Math.sqrt(dx * dx + dy * dy);
-            }
-            return distance;
-        }
-
-        function isPathClear(points, obstacles) {
-            for (let i = 0; i < points.length - 1; i++) {
-                for (let obstacle of obstacles) {
-                    if (lineIntersectsRect(points[i], points[i + 1], obstacle)) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-
         function lineIntersectsRect(p1, p2, rect) {
-            // Check if a line segment intersects with a rectangle
-            // Using line-rectangle intersection algorithm
-            
-            // Check if line is completely outside rectangle bounds
             if ((p1.x < rect.left && p2.x < rect.left) ||
                 (p1.x > rect.right && p2.x > rect.right) ||
                 (p1.y < rect.top && p2.y < rect.top) ||
@@ -1733,15 +1558,11 @@
                 return false;
             }
             
-            // Check if either endpoint is inside the rectangle
-            if ((p1.x >= rect.left && p1.x <= rect.right && 
-                 p1.y >= rect.top && p1.y <= rect.bottom) ||
-                (p2.x >= rect.left && p2.x <= rect.right && 
-                 p2.y >= rect.top && p2.y <= rect.bottom)) {
+            if ((p1.x >= rect.left && p1.x <= rect.right && p1.y >= rect.top && p1.y <= rect.bottom) ||
+                (p2.x >= rect.left && p2.x <= rect.right && p2.y >= rect.top && p2.y <= rect.bottom)) {
                 return true;
             }
             
-            // Check line intersection with rectangle edges
             const lines = [
                 { start: { x: rect.left, y: rect.top }, end: { x: rect.right, y: rect.top } },
                 { start: { x: rect.right, y: rect.top }, end: { x: rect.right, y: rect.bottom } },
@@ -1759,9 +1580,8 @@
         }
 
         function linesIntersect(p1, p2, p3, p4) {
-            // Check if two line segments intersect
             const d = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
-            if (d === 0) return false; // Parallel lines
+            if (d === 0) return false;
             
             const ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / d;
             const ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / d;
@@ -1769,98 +1589,21 @@
             return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
         }
 
-        // Markdown parser
-        function parseMarkdown(text) {
-            if (!text) return '';
-            
-            // Escape HTML
-            text = text.replace(/&/g, '&amp;')
-                      .replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;');
-            
-            // Headers
-            text = text.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-            
-            // Bold
-            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            
-            // Lists
-            text = text.replace(/^\* (.+)$/gm, '<li>$1</li>');
-            text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-            
-            // Code
-            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-            
-            // Tables - improved support
-            const lines = text.split('\n');
-            let inTable = false;
-            let tableHtml = '';
-            let processedLines = [];
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                
-                if (line.includes('|') && line.trim().startsWith('|') && line.trim().endsWith('|')) {
-                    if (!inTable) {
-                        inTable = true;
-                        tableHtml = '<table>';
-                    }
-                    
-                    // Check if this is a separator line
-                    if (line.match(/^\|\s*:?-+:?\s*\|/)) {
-                        continue; // Skip separator lines
-                    }
-                    
-                    // Process table row
-                    const cells = line.split('|').filter((cell, index) => index > 0 && index < line.split('|').length - 1);
-                    const isHeader = i > 0 && lines[i - 1].includes('|') && lines[i + 1] && lines[i + 1].match(/^\|\s*:?-+:?\s*\|/);
-                    
-                    tableHtml += '<tr>';
-                    cells.forEach(cell => {
-                        const tag = isHeader ? 'th' : 'td';
-                        tableHtml += `<${tag}>${cell.trim()}</${tag}>`;
-                    });
-                    tableHtml += '</tr>';
-                } else {
-                    if (inTable) {
-                        inTable = false;
-                        tableHtml += '</table>';
-                        processedLines.push(tableHtml);
-                        tableHtml = '';
-                    }
-                    processedLines.push(line);
-                }
-            }
-            
-            if (inTable) {
-                tableHtml += '</table>';
-                processedLines.push(tableHtml);
-            }
-            
-            text = processedLines.join('\n');
-            
-            // Paragraphs
-            text = text.split('\n\n').map(para => {
-                if (!para.startsWith('<')) {
-                    return `<p>${para}</p>`;
-                }
-                return para;
-            }).join('\n');
-            
-            return text;
-        }
-
         // Node interactions
-        function selectNode(node, e) {
-            e.stopPropagation();
-            
+        function clearSelection() {
             if (selectedNode) {
                 selectedNode.classList.remove('selected');
+                selectedNode = null;
             }
-            
+            if (selectedNodes.length > 0) {
+                selectedNodes.forEach(n => n.classList.remove('selected'));
+                selectedNodes = [];
+            }
+        }
+
+        function selectNode(node, e) {
+            e.stopPropagation();
+            clearSelection();
             selectedNode = node;
             node.classList.add('selected');
         }
@@ -1883,7 +1626,6 @@
             titleEl.contentEditable = true;
             titleEl.focus();
             
-            // Select all text
             const range = document.createRange();
             range.selectNodeContents(titleEl);
             const sel = window.getSelection();
@@ -1917,7 +1659,6 @@
         function startDrag(node, e) {
             if (e.target.classList.contains('node-control')) return;
             
-            // Check if Alt key is held for linking
             if (e.altKey) {
                 startLinking(node, e);
                 return;
@@ -1926,7 +1667,6 @@
             isDragging = true;
             const nodeRect = node.getBoundingClientRect();
             
-            // Calculate the offset within the node where the mouse was clicked
             dragOffset = {
                 x: e.clientX - nodeRect.left,
                 y: e.clientY - nodeRect.top
@@ -1945,7 +1685,6 @@
             
             const canvasRect = canvas.getBoundingClientRect();
             
-            // Calculate position accounting for scroll and scale
             const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x;
             const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y;
             
@@ -1962,6 +1701,7 @@
         }
 
         function stopDrag() {
+            if (!isDragging) return;
             isDragging = false;
             if (selectedNode) {
                 selectedNode.classList.remove('dragging');
@@ -1976,10 +1716,8 @@
             isLinking = true;
             linkSource = node;
             
-            // Add linking class to canvas
             canvas.classList.add('linking');
             
-            // Create temporary link line
             tempLinkLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             tempLinkLine.classList.add('link');
             tempLinkLine.style.strokeDasharray = '5,5';
@@ -1987,7 +1725,6 @@
             tempLinkLine.style.opacity = '0.5';
             linksSvg.appendChild(tempLinkLine);
             
-            node.style.border = '3px solid #1a73e8';
             node.classList.add('link-source');
             
             document.addEventListener('mousemove', handleLinking);
@@ -2011,50 +1748,33 @@
             const pathString = `M ${startX} ${startY} L ${mouseX} ${mouseY}`;
             tempLinkLine.setAttribute('d', pathString);
             
-            // Highlight potential target
             const element = document.elementFromPoint(e.clientX, e.clientY);
             const targetNode = element?.closest('.node');
             
-            // Remove previous highlights
-            document.querySelectorAll('.node').forEach(n => {
-                if (n !== linkSource && !n.classList.contains('link-target')) {
-                    n.style.border = '';
-                }
-            });
+            document.querySelectorAll('.node.link-target').forEach(n => n.classList.remove('link-target'));
             
             if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) {
-                targetNode.style.border = '3px solid #4caf50';
                 targetNode.classList.add('link-target');
-            } else {
-                document.querySelectorAll('.link-target').forEach(n => {
-                    n.classList.remove('link-target');
-                    if (n !== linkSource) n.style.border = '';
-                });
             }
         }
         
         function stopLinking(e) {
             if (!isLinking) return;
-            
             isLinking = false;
             canvas.classList.remove('linking');
             
-            // Remove temporary line
             if (tempLinkLine) {
                 tempLinkLine.remove();
                 tempLinkLine = null;
             }
             
-            // Check if we're over a valid target
             const element = document.elementFromPoint(e.clientX, e.clientY);
             const targetNode = element?.closest('.node');
             
             if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) {
-                // Create the link
                 const sourceId = linkSource.id;
                 const targetId = targetNode.id;
                 
-                // Check if link already exists
                 const existingLink = workflow.links.find(link => 
                     link.sourceId === sourceId && link.targetId === targetId
                 );
@@ -2071,10 +1791,8 @@
                 }
             }
             
-            // Clear all highlights
-            document.querySelectorAll('.node').forEach(n => {
-                n.style.border = '';
-                n.classList.remove('link-target', 'link-source');
+            document.querySelectorAll('.link-source, .link-target').forEach(n => {
+                n.classList.remove('link-source', 'link-target');
             });
             
             linkSource = null;
@@ -2091,15 +1809,14 @@
             document.addEventListener('mousemove', handleResize);
             document.addEventListener('mouseup', stopResize);
             e.preventDefault();
+            e.stopPropagation();
         }
 
         function handleResize(e) {
             if (!isResizing || !selectedNode) return;
             
             const nodeRect = selectedNode.getBoundingClientRect();
-            const canvasRect = canvas.getBoundingClientRect();
             
-            // Calculate new dimensions accounting for scale
             const width = Math.max(200, (e.clientX - nodeRect.left) / scale);
             const height = Math.max(100, (e.clientY - nodeRect.top) / scale);
             
@@ -2116,6 +1833,7 @@
         }
 
         function stopResize() {
+            if (!isResizing) return;
             isResizing = false;
             document.removeEventListener('mousemove', handleResize);
             document.removeEventListener('mouseup', stopResize);
@@ -2125,26 +1843,20 @@
         // Context menu
         function handleContextMenu(e) {
             e.preventDefault();
-            
-            // Don't show context menu while panning or just after panning
             if (isPanning || (panStart.x !== 0 || panStart.y !== 0)) return;
             
             const targetElement = e.target;
             const groupNode = targetElement.closest('.node.group');
             const anyNode = targetElement.closest('.node');
             
-            // Show context menu if we're not clicking on a node (except groups which allow right-click inside)
             if (!anyNode || groupNode) {
                 const canvasRect = canvas.getBoundingClientRect();
                 
-                // Calculate position in viewport coordinates accounting for zoom/pan
                 contextMenuPos = {
                     x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale,
-                    y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale
+                    y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale,
+                    groupId: groupNode ? groupNode.id : null
                 };
-                
-                // Store the group ID if we're right-clicking inside a group
-                contextMenuPos.groupId = groupNode ? groupNode.id : null;
                 
                 contextMenu.style.left = e.clientX + 'px';
                 contextMenu.style.top = e.clientY + 'px';
@@ -2152,7 +1864,30 @@
             }
         }
 
-        // Pan and Zoom
+        // Pan, Zoom, and Selection
+        function handleMouseDown(e) {
+            const clickedNode = e.target.closest('.node');
+            const clickedLink = e.target.closest('.link, .link-clickable');
+
+            if (!clickedNode && !clickedLink && (e.ctrlKey || e.metaKey)) {
+                startSelection(e);
+            } else if ((e.button === 0 && !clickedNode && !clickedLink) || e.button === 1 || (e.button === 0 && e.shiftKey)) {
+                handlePanStart(e);
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (isPanning) {
+                handlePan(e);
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (isPanning) {
+                handlePanEnd(e);
+            }
+        }
+
         function handleWheel(e) {
             e.preventDefault();
             
@@ -2161,20 +1896,14 @@
             
             if (newScale !== scale) {
                 const canvasRect = canvas.getBoundingClientRect();
-                
-                // Get mouse position relative to canvas
                 const mouseX = e.clientX - canvasRect.left;
                 const mouseY = e.clientY - canvasRect.top;
                 
-                // Calculate the point in the viewport that the mouse is over
                 const viewportX = (mouseX + canvas.scrollLeft - translateX) / scale;
                 const viewportY = (mouseY + canvas.scrollTop - translateY) / scale;
                 
-                // Update scale
-                const oldScale = scale;
                 scale = newScale;
                 
-                // Calculate new translate values to keep the point under the mouse stationary
                 translateX = mouseX + canvas.scrollLeft - viewportX * scale;
                 translateY = mouseY + canvas.scrollTop - viewportY * scale;
                 
@@ -2183,19 +1912,9 @@
         }
 
         function handlePanStart(e) {
-            // Check if we clicked on a node or its children
-            const clickedNode = e.target.closest('.node');
-            const clickedLink = e.target.closest('.link, .link-clickable');
-            
-            // Allow panning with left click on canvas/viewport (not on nodes or links), middle button, or shift+left
-            if ((e.button === 0 && !clickedNode && !clickedLink) || 
-                e.button === 1 || 
-                (e.button === 0 && e.shiftKey)) {
-                e.preventDefault();
-                panStart = { x: e.clientX, y: e.clientY };
-                panStartTime = Date.now();
-                // Don't set isPanning immediately - wait for actual movement
-            }
+            e.preventDefault();
+            panStart = { x: e.clientX, y: e.clientY };
+            panStartTime = Date.now();
         }
 
         function handlePan(e) {
@@ -2205,13 +1924,9 @@
             const dy = e.clientY - panStart.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            // Only start panning if moved beyond threshold
             if (!isPanning && distance > panThreshold) {
                 isPanning = true;
-                canvas.style.cursor = 'grabbing';
-                viewport.style.cursor = 'grabbing';
                 canvas.classList.add('panning');
-                viewport.classList.add('panning');
             }
             
             if (isPanning) {
@@ -2225,31 +1940,86 @@
             const wasPanning = isPanning;
             if (isPanning) {
                 isPanning = false;
-                canvas.style.cursor = 'grab';
-                viewport.style.cursor = 'grab';
                 canvas.classList.remove('panning');
-                viewport.classList.remove('panning');
-                autoSave(); // Save scroll position after panning
+                autoSave();
             }
             panStart = { x: 0, y: 0 };
             
-            // If it was a quick click without much movement, treat it as a click
             if (!wasPanning && Date.now() - panStartTime < 200) {
                 handleCanvasClick(e);
             }
         }
 
+        function startSelection(e) {
+            isSelecting = true;
+            selectStart = {
+                x: e.clientX - canvas.getBoundingClientRect().left + canvas.scrollLeft,
+                y: e.clientY - canvas.getBoundingClientRect().top + canvas.scrollTop
+            };
+            selectionRect.style.left = selectStart.x + 'px';
+            selectionRect.style.top = selectStart.y + 'px';
+            selectionRect.style.width = '0px';
+            selectionRect.style.height = '0px';
+            selectionRect.style.display = 'block';
+            
+            document.addEventListener('mousemove', handleSelection);
+            document.addEventListener('mouseup', endSelection);
+            e.preventDefault();
+        }
+
+        function handleSelection(e) {
+            if (!isSelecting) return;
+            const currentX = e.clientX - canvas.getBoundingClientRect().left + canvas.scrollLeft;
+            const currentY = e.clientY - canvas.getBoundingClientRect().top + canvas.scrollTop;
+
+            const x = Math.min(selectStart.x, currentX);
+            const y = Math.min(selectStart.y, currentY);
+            const width = Math.abs(currentX - selectStart.x);
+            const height = Math.abs(currentY - selectStart.y);
+
+            selectionRect.style.left = x + 'px';
+            selectionRect.style.top = y + 'px';
+            selectionRect.style.width = width + 'px';
+            selectionRect.style.height = height + 'px';
+
+            const rectX = (x - translateX) / scale;
+            const rectY = (y - translateY) / scale;
+            const rectWidth = width / scale;
+            const rectHeight = height / scale;
+
+            clearSelection();
+            
+            Object.values(workflow.items).forEach(item => {
+                if (!item.parentId) {
+                    const node = document.getElementById(item.id);
+                    if (node) {
+                        const itemRight = item.x + item.width;
+                        const itemBottom = item.y + item.height;
+                        if (item.x < rectX + rectWidth && itemRight > rectX &&
+                            item.y < rectY + rectHeight && itemBottom > rectY) {
+                            node.classList.add('selected');
+                            selectedNodes.push(node);
+                        }
+                    }
+                }
+            });
+        }
+
+        function endSelection() {
+            isSelecting = false;
+            selectionRect.style.display = 'none';
+            document.removeEventListener('mousemove', handleSelection);
+            document.removeEventListener('mouseup', endSelection);
+        }
+
         function updateViewportTransform() {
             viewport.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
             zoomIndicator.textContent = Math.round(scale * 100) + '%';
-            
-            // Don't transform the SVG - it's already inside the transformed viewport
             updateLinks();
             autoSave();
         }
 
         function handleCanvasClick(e) {
-            // Skip if this was called from a pan operation
             if (panStart.x !== 0 || panStart.y !== 0) return;
             
             if (contextMenu.style.display === 'block') {
@@ -2259,12 +2029,7 @@
             const clickedNode = e.target.closest('.node');
             
             if (!clickedNode) {
-                if (selectedNode) {
-                    selectedNode.classList.remove('selected');
-                    selectedNode = null;
-                }
-                
-                // Update context position for pasting
+                clearSelection();
                 const canvasRect = canvas.getBoundingClientRect();
                 contextMenuPos = {
                     x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale,
@@ -2282,34 +2047,20 @@
             contextMenu.style.display = 'none';
             
             if (action === 'paste') {
-                // Trigger paste at the context menu position
                 navigator.clipboard.readText().then(text => {
                     if (text) {
                         const id = `item-${workflow.nextItemId++}`;
                         const pasteItem = {
-                            id: id,
-                            type: 'data',
-                            x: contextMenuPos.x,
-                            y: contextMenuPos.y,
-                            width: 300,
-                            height: 200,
-                            data: {
-                                title: 'Pasted Text',
-                                dataType: 'text',
-                                content: text
-                            },
+                            id: id, type: 'data', x: contextMenuPos.x, y: contextMenuPos.y,
+                            width: 300, height: 200,
+                            data: { title: 'Pasted Text', dataType: 'text', content: text },
                             parentId: null
                         };
-                        
                         workflow.items[id] = pasteItem;
                         createNode(pasteItem);
                         autoSave();
                     }
-                }).catch(err => {
-                    console.log('Paste from context menu requires clipboard permissions');
-                });
-                
-                // Clear group context
+                }).catch(err => console.log('Paste from context menu requires clipboard permissions'));
                 contextMenuPos.groupId = null;
                 return;
             }
@@ -2329,8 +2080,6 @@
             if (type) {
                 addNode(type, contextMenuPos.x, contextMenuPos.y);
             }
-            
-            // Clear group context after use
             contextMenuPos.groupId = null;
         }
 
@@ -2339,65 +2088,26 @@
             const id = `item-${workflow.nextItemId++}`;
             const defaultData = {
                 title: type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' '),
-                content: '',
-                isExpanded: false
+                content: '', isExpanded: false
             };
             
-            // Type-specific defaults
-            if (type === 'task') {
-                Object.assign(defaultData, {
-                    description: '',
-                    complexity: 3,
-                    risk: 0.1,
-                    priority: 3,
-                    duration: 1
-                });
-            } else if (type === 'estimator') {
-                Object.assign(defaultData, {
-                    teamMembers: 5,
-                    workingHours: 8,
-                    overhead: 0.15,
-                    productivity: 0.85,
-                    learningCurve: 1.0,
-                    hoursPerStoryPoint: 4
-                });
-            } else if (type === 'adr') {
-                Object.assign(defaultData, {
-                    code: '',
-                    category: '',
-                    topic: ''
-                });
-            } else if (type === 'group') {
-                defaultData.children = [];
-                groups[id] = [];
-            }
+            if (type === 'task') Object.assign(defaultData, { description: '', complexity: 3, risk: 0.1, priority: 3, duration: 1 });
+            else if (type === 'estimator') Object.assign(defaultData, { teamMembers: 5, workingHours: 8, overhead: 0.15, productivity: 0.85, learningCurve: 1.0, hoursPerStoryPoint: 4 });
+            else if (type === 'adr') Object.assign(defaultData, { code: '', category: '', topic: '' });
+            else if (type === 'group') { defaultData.children = []; groups[id] = []; }
             
             const item = {
-                id: id,
-                type: type,
-                x: x,
-                y: y,
-                width: 300,
-                height: 200,
-                data: defaultData,
-                parentId: contextMenuPos.groupId || null
+                id: id, type: type, x: x, y: y, width: 300, height: 200,
+                data: defaultData, parentId: contextMenuPos.groupId || null
             };
             
             workflow.items[id] = item;
             
-            // If adding to a group, update the group's children
             if (contextMenuPos.groupId) {
-                if (!groups[contextMenuPos.groupId]) {
-                    groups[contextMenuPos.groupId] = [];
-                }
+                if (!groups[contextMenuPos.groupId]) groups[contextMenuPos.groupId] = [];
                 groups[contextMenuPos.groupId].push(id);
+                if (workflow.items[contextMenuPos.groupId]) workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
                 
-                // Update the group's data
-                if (workflow.items[contextMenuPos.groupId]) {
-                    workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
-                }
-                
-                // Re-render the group to show the new child
                 const groupNode = document.getElementById(contextMenuPos.groupId);
                 if (groupNode) {
                     const groupContent = groupNode.querySelector('.node-content');
@@ -2405,7 +2115,6 @@
                     setupInputListeners(groupNode, workflow.items[contextMenuPos.groupId]);
                 }
             } else {
-                // Only create the node element if it's not in a group
                 createNode(item);
             }
             
@@ -2420,101 +2129,64 @@
             
             const item = workflow.items[nodeId];
             
-            // If it's a group, also delete its children
             if (item && item.type === 'group') {
                 const children = groups[nodeId] || item.data.children || [];
-                children.forEach(childId => {
-                    deleteNode(childId);
-                });
+                children.forEach(childId => deleteNode(childId));
             }
             
-            // Remove from expanded inline nodes
             delete expandedInlineNodes[nodeId];
-            
             delete workflow.items[nodeId];
             
-            // Remove from groups and update parent's children array
             Object.keys(groups).forEach(groupId => {
                 groups[groupId] = groups[groupId].filter(id => id !== nodeId);
-                if (workflow.items[groupId]) {
-                    workflow.items[groupId].data.children = groups[groupId];
-                }
+                if (workflow.items[groupId]) workflow.items[groupId].data.children = groups[groupId];
             });
             
-            // Remove related links
-            workflow.links = workflow.links.filter(link => 
-                link.sourceId !== nodeId && link.targetId !== nodeId
-            );
+            workflow.links = workflow.links.filter(link => link.sourceId !== nodeId && link.targetId !== nodeId);
             
             updateLinks();
             autoSave();
         }
 
-        // Fixed Links update function
+        // Links update function
         function updateLinks() {
-            // Clear existing paths but keep the defs
             const existingPaths = linksSvg.querySelectorAll('path');
             existingPaths.forEach(path => path.remove());
             
-            // Ensure defs exist
             if (!linksSvg.querySelector('defs')) {
                 linksSvg.innerHTML = '<defs><marker id="arrowhead" markerWidth="12" markerHeight="12" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" class="link-arrow"/></marker></defs>';
             }
             
-            // Set SVG size to match viewport
             linksSvg.setAttribute('width', '8000');
             linksSvg.setAttribute('height', '8000');
             
-            // Get all visible nodes as obstacles (in unscaled coordinates)
             const obstacles = [];
             Object.values(workflow.items).forEach(item => {
-                if (!item.parentId) { // Only consider top-level nodes
+                if (!item.parentId) {
                     const node = document.getElementById(item.id);
                     if (node && node.style.display !== 'none') {
                         obstacles.push({
-                            left: item.x,
-                            top: item.y,
-                            right: item.x + item.width,
-                            bottom: item.y + item.height,
-                            id: item.id
+                            left: item.x, top: item.y, right: item.x + item.width, bottom: item.y + item.height, id: item.id
                         });
                     }
                 }
             });
             
-            // Draw links
             workflow.links.forEach(link => {
                 const source = document.getElementById(link.sourceId);
                 const target = document.getElementById(link.targetId);
-                
-                if (!source || !target) return;
-                
-                // Skip hidden nodes
-                if (source.style.display === 'none' || target.style.display === 'none') return;
+                if (!source || !target || source.style.display === 'none' || target.style.display === 'none') return;
                 
                 const sourceItem = workflow.items[link.sourceId];
                 const targetItem = workflow.items[link.targetId];
-                
                 if (!sourceItem || !targetItem) return;
                 
-                // Calculate connection points (in unscaled coordinates)
-                const startPoint = {
-                    x: sourceItem.x + sourceItem.width / 2,
-                    y: sourceItem.y + sourceItem.height
-                };
-                const endPoint = {
-                    x: targetItem.x + targetItem.width / 2,
-                    y: targetItem.y
-                };
+                const startPoint = { x: sourceItem.x + sourceItem.width / 2, y: sourceItem.y + sourceItem.height };
+                const endPoint = { x: targetItem.x + targetItem.width / 2, y: targetItem.y };
                 
-                // Find path avoiding obstacles (but not the source and target)
-                const relevantObstacles = obstacles.filter(obs => 
-                    obs.id !== link.sourceId && obs.id !== link.targetId
-                );
-                
+                const relevantObstacles = obstacles.filter(obs => obs.id !== link.sourceId && obs.id !== link.targetId);
                 const pathPoints = findPath(startPoint, endPoint, relevantObstacles);
                 
-                // Create SVG path
                 let pathString = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
                 for (let i = 1; i < pathPoints.length; i++) {
                     pathString += ` L ${pathPoints[i].x} ${pathPoints[i].y}`;
@@ -2526,12 +2198,10 @@
                 path.setAttribute('marker-end', 'url(#arrowhead)');
                 path.dataset.linkId = link.id;
                 
-                // Create invisible wider path for easier clicking
                 const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 clickPath.setAttribute('d', pathString);
                 clickPath.classList.add('link-clickable');
                 
-                // Add click handler to delete link
                 const deleteLink = (e) => {
                     e.stopPropagation();
                     if (confirm('Delete this connection?')) {
@@ -2556,26 +2226,24 @@
             inputs.forEach(input => {
                 input.addEventListener('change', () => {
                     updateItemData(item);
-                    
-                    // If it's an estimator, recalculate
-                    if (item.type === 'estimator') {
-                        calculateEstimates();
-                    }
-                    
+                    if (item.type === 'estimator') calculateEstimates();
                     autoSave();
                 });
-                
-                // Prevent drag when interacting with inputs
                 input.addEventListener('mousedown', e => e.stopPropagation());
             });
             
-            // Setup listeners for group child icons
             if (item.type === 'group') {
                 const childIcons = node.querySelectorAll('.group-child-icon');
                 childIcons.forEach(icon => {
+                    const childId = icon.dataset.childId;
+                    icon.addEventListener('click', (e) => {
+                        if (e.ctrlKey || e.metaKey) {
+                            e.stopPropagation();
+                            openNodeInModal(childId);
+                        }
+                    });
                     icon.addEventListener('dblclick', (e) => {
                         e.stopPropagation();
-                        const childId = icon.dataset.childId;
                         toggleInlineNode(childId, item.id);
                     });
                 });
@@ -2583,21 +2251,17 @@
         }
 
         function updateItemData(item) {
-            const node = document.getElementById(item.id) || document.getElementById(`inline-${item.id}`);
+            const node = document.getElementById(item.id) || document.getElementById(`inline-${item.id}`) || document.getElementById(`modal-${item.id}`);
             if (!node) return;
             
             switch (item.type) {
-                case 'scribble':
-                    item.data.content = node.querySelector('.scribble-content')?.value;
-                    break;
-                    
+                case 'scribble': item.data.content = node.querySelector('.scribble-content')?.value; break;
                 case 'task':
                     item.data.complexity = node.querySelector('.complexity')?.value;
                     item.data.risk = node.querySelector('.risk')?.value;
                     item.data.priority = node.querySelector('.priority')?.value;
                     item.data.duration = node.querySelector('.duration')?.value;
                     break;
-                    
                 case 'estimator':
                     item.data.teamMembers = node.querySelector('.team-members')?.value;
                     item.data.workingHours = node.querySelector('.working-hours')?.value;
@@ -2606,20 +2270,8 @@
                     item.data.learningCurve = node.querySelector('.learning-curve')?.value;
                     item.data.hoursPerStoryPoint = node.querySelector('.hours-per-sp')?.value;
                     break;
-                    
-                case 'data':
-                    const textarea = node.querySelector('.data-text');
-                    if (textarea) {
-                        item.data.content = textarea.value;
-                    }
-                    break;
-                    
-                case 'knowledge-section':
-                case 'knowledge-subsection':
-                case 'knowledge-item':
-                    item.data.content = node.querySelector('.knowledge-content')?.value;
-                    break;
-                    
+                case 'data': if (node.querySelector('.data-text')) item.data.content = node.querySelector('.data-text').value; break;
+                case 'knowledge-section': case 'knowledge-subsection': case 'knowledge-item': item.data.content = node.querySelector('.knowledge-content')?.value; break;
                 case 'adr':
                     item.data.code = node.querySelector('.adr-code')?.value;
                     item.data.category = node.querySelector('.adr-category')?.value;
@@ -2636,10 +2288,8 @@
             const estimatorNode = document.getElementById(estimator.id);
             if (!estimatorNode) return;
             
-            let totalBaseSP = 0;
-            let totalAdjustedSP = 0;
+            let totalBaseSP = 0, totalAdjustedSP = 0;
             
-            // Calculate from all visible tasks
             Object.values(workflow.items).filter(item => {
                 if (item.type !== 'task') return false;
                 const node = document.getElementById(item.id);
@@ -2650,20 +2300,14 @@
                 const duration = parseFloat(task.data.duration) || 0;
                 
                 totalBaseSP += complexity;
-                
                 const riskAdjustment = risk;
                 const durationUncertainty = 0.1 * Math.log(1 + Math.max(0, duration));
                 const Fi = (1 + riskAdjustment) * (1 + durationUncertainty);
                 const adjustedSP = complexity * Fi;
-                
-                const baseTestFactor = 0.15;
-                const riskTestFactor = 0.20;
-                const testingEffort = adjustedSP * (baseTestFactor + riskTestFactor * risk);
-                
+                const testingEffort = adjustedSP * (0.15 + 0.20 * risk);
                 totalAdjustedSP += adjustedSP + testingEffort;
             });
             
-            // Calculate velocity
             const R = parseInt(estimator.data.teamMembers) || 0;
             const D = parseFloat(estimator.data.workingHours) || 0;
             const O = parseFloat(estimator.data.overhead) || 0;
@@ -2674,18 +2318,15 @@
             const efficiencyFactor = (O >= 0 && O < 1) ? 1 - O : 0;
             const effectiveHoursPerDay = R * D * efficiencyFactor * P * L;
             
-            let teamVelocity = 0;
-            let duration = 'N/A';
+            let teamVelocity = 0, duration = 'N/A';
             
             if (H > 0 && effectiveHoursPerDay > 0) {
                 teamVelocity = effectiveHoursPerDay / H;
-                
                 if (totalAdjustedSP > 0 && teamVelocity > 0) {
                     duration = (totalAdjustedSP / teamVelocity).toFixed(1);
                 }
             }
             
-            // Update display
             estimatorNode.querySelector('.base-sp').textContent = totalBaseSP.toFixed(2);
             estimatorNode.querySelector('.adj-sp').textContent = totalAdjustedSP.toFixed(2);
             estimatorNode.querySelector('.velocity').textContent = teamVelocity.toFixed(2);
@@ -2707,42 +2348,24 @@
                     
                     reader.onload = (event) => {
                         const id = `item-${workflow.nextItemId++}`;
-                        
-                        // Use last click position or center of visible area
                         const canvasRect = canvas.getBoundingClientRect();
                         const defaultX = (canvasRect.width / 2 + canvas.scrollLeft - translateX) / scale;
                         const defaultY = (canvasRect.height / 2 + canvas.scrollTop - translateY) / scale;
                         
                         const pasteItem = {
-                            id: id,
-                            type: 'data',
-                            x: contextMenuPos.x || defaultX,
-                            y: contextMenuPos.y || defaultY,
-                            width: 300,
-                            height: 200,
-                            data: {
-                                title: 'Pasted Image',
-                                dataType: 'image',
-                                content: event.target.result
-                            },
+                            id: id, type: 'data', x: contextMenuPos.x || defaultX, y: contextMenuPos.y || defaultY,
+                            width: 300, height: 200,
+                            data: { title: 'Pasted Image', dataType: 'image', content: event.target.result },
                             parentId: contextMenuPos.groupId || null
                         };
                         
                         workflow.items[id] = pasteItem;
                         
-                        // Handle group paste
                         if (contextMenuPos.groupId) {
-                            if (!groups[contextMenuPos.groupId]) {
-                                groups[contextMenuPos.groupId] = [];
-                            }
+                            if (!groups[contextMenuPos.groupId]) groups[contextMenuPos.groupId] = [];
                             groups[contextMenuPos.groupId].push(id);
+                            if (workflow.items[contextMenuPos.groupId]) workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
                             
-                            // Update the group's data
-                            if (workflow.items[contextMenuPos.groupId]) {
-                                workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
-                            }
-                            
-                            // Re-render the group
                             const groupNode = document.getElementById(contextMenuPos.groupId);
                             if (groupNode) {
                                 const groupContent = groupNode.querySelector('.node-content');
@@ -2752,66 +2375,10 @@
                         } else {
                             createNode(pasteItem);
                         }
-                        
                         autoSave();
                     };
-                    
                     reader.readAsDataURL(blob);
                     return;
-                }
-                
-                if (item.type === 'text/plain') {
-                    e.preventDefault();
-                    item.getAsString((text) => {
-                        const id = `item-${workflow.nextItemId++}`;
-                        
-                        // Use last click position or center of visible area
-                        const canvasRect = canvas.getBoundingClientRect();
-                        const defaultX = (canvasRect.width / 2 + canvas.scrollLeft - translateX) / scale;
-                        const defaultY = (canvasRect.height / 2 + canvas.scrollTop - translateY) / scale;
-                        
-                        const pasteItem = {
-                            id: id,
-                            type: 'data',
-                            x: contextMenuPos.x || defaultX,
-                            y: contextMenuPos.y || defaultY,
-                            width: 300,
-                            height: 200,
-                            data: {
-                                title: 'Pasted Text',
-                                dataType: 'text',
-                                content: text
-                            },
-                            parentId: contextMenuPos.groupId || null
-                        };
-                        
-                        workflow.items[id] = pasteItem;
-                        
-                        // Handle group paste
-                        if (contextMenuPos.groupId) {
-                            if (!groups[contextMenuPos.groupId]) {
-                                groups[contextMenuPos.groupId] = [];
-                            }
-                            groups[contextMenuPos.groupId].push(id);
-                            
-                            // Update the group's data
-                            if (workflow.items[contextMenuPos.groupId]) {
-                                workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
-                            }
-                            
-                            // Re-render the group
-                            const groupNode = document.getElementById(contextMenuPos.groupId);
-                            if (groupNode) {
-                                const groupContent = groupNode.querySelector('.node-content');
-                                groupContent.innerHTML = createGroupContent(workflow.items[contextMenuPos.groupId]);
-                                setupInputListeners(groupNode, workflow.items[contextMenuPos.groupId]);
-                            }
-                        } else {
-                            createNode(pasteItem);
-                        }
-                        
-                        autoSave();
-                    });
                 }
             }
         }
@@ -2824,7 +2391,7 @@
             let hasVisibleNodes = false;
             
             Object.values(workflow.items).forEach(item => {
-                if (!item.parentId) { // Only consider top-level nodes
+                if (!item.parentId) {
                     hasVisibleNodes = true;
                     minX = Math.min(minX, item.x);
                     minY = Math.min(minY, item.y);
@@ -2854,7 +2421,6 @@
             const activeElement = document.activeElement;
             if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.contentEditable === 'true') return;
             
-            // Zoom shortcuts with Ctrl/Cmd
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === '+' || e.key === '=') {
                     e.preventDefault();
@@ -2866,30 +2432,81 @@
                     updateViewportTransform();
                 } else if (e.key === '0') {
                     e.preventDefault();
-                    scale = 1;
-                    translateX = 0;
-                    translateY = 0;
-                    updateViewportTransform();
+                    resetView();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    groupSelectedNodes();
                 }
             }
             
-            // Delete key for selected node
-            if (e.key === 'Delete' && selectedNode) {
-                const item = workflow.items[selectedNode.id];
-                if (item && confirm('Delete this node?')) {
-                    deleteNode(selectedNode.id);
+            if (e.key === 'Delete' && (selectedNode || selectedNodes.length > 0)) {
+                if (confirm('Delete selected node(s)?')) {
+                    if (selectedNodes.length > 0) {
+                        selectedNodes.forEach(node => deleteNode(node.id));
+                        clearSelection();
+                    } else if (selectedNode) {
+                        deleteNode(selectedNode.id);
+                        clearSelection();
+                    }
                 }
             }
         }
 
+        // New Feature Functions
+        function groupSelectedNodes() {
+            if (selectedNodes.length < 1) return;
+
+            let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+            selectedNodes.forEach(node => {
+                const item = workflow.items[node.id];
+                minX = Math.min(minX, item.x);
+                minY = Math.min(minY, item.y);
+                maxX = Math.max(maxX, item.x + item.width);
+                maxY = Math.max(maxY, item.y + item.height);
+            });
+
+            const groupId = `item-${workflow.nextItemId++}`;
+            const groupItem = {
+                id: groupId, type: 'group',
+                x: minX - 40, y: minY - 60,
+                width: (maxX - minX) + 80, height: (maxY - minY) + 100,
+                data: { title: 'New Group', isExpanded: true, children: [] },
+                parentId: null
+            };
+            workflow.items[groupId] = groupItem;
+            groups[groupId] = [];
+
+            selectedNodes.forEach(node => {
+                const item = workflow.items[node.id];
+                item.parentId = groupId;
+                groups[groupId].push(item.id);
+                node.remove();
+            });
+            groupItem.data.children = groups[groupId];
+
+            createNode(groupItem);
+            clearSelection();
+            autoSave();
+        }
+
+        function openNodeInModal(itemId) {
+            const item = workflow.items[itemId];
+            if (!item) return;
+
+            modalContent.innerHTML = '';
+            const modalNode = createNode(item, false, null, true);
+            modalOverlay.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modalOverlay.style.display = 'none';
+            modalContent.innerHTML = '';
+        }
+
         // Utility functions
         function hasExpandableContent(item) {
-            return item.type === 'scribble' ||
-                   item.type === 'group' || 
-                   item.type === 'task' ||
-                   item.type === 'estimator' ||
-                   item.type === 'adr' ||
-                   item.type.startsWith('knowledge-') ||
+            return item.type === 'scribble' || item.type === 'group' || item.type === 'task' ||
+                   item.type === 'estimator' || item.type === 'adr' || item.type.startsWith('knowledge-') ||
                    item.type === 'data';
         }
 
@@ -2899,5 +2516,6 @@
             updateViewportTransform();
         }
     </script>
+
 </body>
 </html>
