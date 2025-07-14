@@ -1,810 +1,646 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Enhanced Node-Based Dashboard</title>
-    <script src="[https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js](https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js)"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Tree Workflow Visualizer</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Prevent body scrolling */
-            background-color: #f0f0f0;
         }
 
-        /* --- Topbar --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
         #topbar {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            background-color: #333;
+            right: 0;
+            height: 50px;
+            background: linear-gradient(to bottom, #2c3e50, #34495e);
             color: white;
-            padding: 10px 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 200;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
         }
+
         #topbar h1 {
-            margin: 0;
-            font-size: 1.4em;
-            font-weight: 400;
+            font-size: 20px;
+            font-weight: 500;
+            margin-right: auto;
         }
-        #topbar .topbar-buttons button {
-            background-color: #007bff;
+
+        #topbar button {
+            background: #3498db;
             color: white;
             border: none;
-            padding: 8px 12px;
+            padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 14px;
             margin-left: 10px;
-            transition: background-color 0.2s;
+            transition: background 0.2s;
         }
-        #topbar .topbar-buttons button:hover {
-            background-color: #0056b3;
+
+        #topbar button:hover {
+            background: #2980b9;
         }
-        #file-loader {
+
+        input[type="file"] {
             display: none;
         }
 
+        /* Canvas */
         #canvas {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            background-color: #e8e8e8;
-            background-image: linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: auto;
+            background-color: #ecf0f1;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
             background-size: 20px 20px;
-            overflow: hidden;
-            cursor: default;
-            padding-top: 55px; /* Adjust for topbar height */
-            box-sizing: border-box;
         }
 
-        /* --- Tiles --- */
-        .tile {
+        #viewport {
+            position: relative;
+            min-width: 100%;
+            min-height: 100%;
+            width: max-content;
+            height: max-content;
+        }
+
+        /* Nodes */
+        .node {
             position: absolute;
-            background-color: #ffffe0; /* Light yellow sticky note */
-            border: 1px solid #ccc;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-            padding: 15px;
-            border-radius: 3px;
-            min-width: 250px;
-            min-height: 150px;
-            z-index: 10;
-            transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
+            background: white;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
-        .tile.selected {
-            box-shadow: 0 0 10px 4px #007bff;
-            z-index: 11;
-            border-color: #007bff;
+        .node:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
         }
 
-        .tile.dragging {
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
-            opacity: 0.9;
+        .node.selected {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
         }
 
-        .tile .tile-header {
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
+        .node.expanded {
+            z-index: 100;
+        }
+
+        /* Node types */
+        .node.scribble {
+            background: #fffef0;
+            border-color: #f39c12;
+        }
+
+        .node.group {
+            background: #e8f4fd;
+            border-color: #3498db;
+        }
+
+        .node-header {
+            padding: 12px 16px;
+            background: rgba(0,0,0,0.03);
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            cursor: move;
+            user-select: none;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            cursor: grab;
-            flex-shrink: 0;
-            position: relative;
-            padding-left: 10px;
-            padding-right: 10px;
-            padding-top: 5px;
-            margin: -15px -15px 10px -15px;
+            gap: 8px;
         }
 
-        .tile .tile-header::before {
-            content: '';
+        .node-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .node-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2c3e50;
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .node-expand-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.5;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .node.expanded .node-expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .node-content {
+            padding: 16px;
+            display: none;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #34495e;
+        }
+
+        .node.expanded .node-content {
+            display: block;
+        }
+
+        .node-content h1, .node-content h2, .node-content h3, .node-content h4 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .node-content h1 { font-size: 20px; }
+        .node-content h2 { font-size: 18px; }
+        .node-content h3 { font-size: 16px; }
+        .node-content h4 { font-size: 14px; }
+
+        .node-content ul, .node-content ol {
+            margin-left: 24px;
+            margin-bottom: 8px;
+        }
+
+        .node-content li {
+            margin-bottom: 4px;
+        }
+
+        .node-content strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .node-content code {
+            background: #ecf0f1;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+
+        /* Links */
+        #links-svg {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(211, 211, 211, 0.3);
-            z-index: -1;
-            border-radius: 3px 3px 0 0;
-            border-bottom: 1px solid #eee;
+            pointer-events: none;
+            z-index: 1;
         }
 
-        .tile .tile-header h3 {
-            margin: 0;
-            font-size: 1.1em;
-            color: #333;
-            flex-grow: 1;
-            margin-right: 10px;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            cursor: default;
-            padding: 2px 4px;
-            border-radius: 2px;
-        }
-        .tile .tile-header h3[contenteditable="true"] {
-            background-color: rgba(0, 123, 255, 0.1);
-            outline: 1px solid rgba(0, 123, 255, 0.5);
-            cursor: text;
-            user-select: text;
+        .link {
+            fill: none;
+            stroke: #7f8c8d;
+            stroke-width: 2;
+            opacity: 0.6;
         }
 
-        .tile .tile-header .change-type-btn {
-            font-size: 1.1em; cursor: pointer; color: #bbb; padding: 0 3px;
-            margin-right: 5px; line-height: 1; z-index: 1; font-family: sans-serif;
-            display: inline-block; vertical-align: middle;
-        }
-        .tile .tile-header .change-type-btn:hover { color: #555; }
-        .tile.estimator .change-type-btn, .tile.group .change-type-btn {
-            opacity: 0.4; cursor: not-allowed;
+        .link-arrow {
+            fill: #7f8c8d;
+            opacity: 0.6;
         }
 
-        .tile .tile-header .delete-btn {
-            font-size: 1.2em; cursor: pointer; color: #aaa; padding: 0 5px;
-            line-height: 1; z-index: 1;
-        }
-        .tile .tile-header .delete-btn:hover { color: #dc3545; }
-
-        .tile .tile-content {
-            flex-grow: 1; overflow-y: auto; overflow-x: hidden;
-            user-select: text; -webkit-user-select: text;
-            cursor: default;
-        }
-
-        .tile label {
-            display: flex; align-items: center; margin-top: 8px;
-            font-size: 0.9em; cursor: default;
-        }
-
-        .tile label span {
-            width: 110px; margin-right: 5px; color: #555;
-            white-space: nowrap; flex-shrink: 0;
-        }
-
-        .tile input[type="number"], .tile select, .tile input[type="text"], .tile textarea {
-            flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 3px;
-            font-size: 0.9em; user-select: text; cursor: auto;
-            width: auto; box-sizing: border-box;
-        }
-        .tile textarea { resize: none; min-height: 50px; font-family: inherit; flex-grow: 1; }
-
-        .tile.scribble .scribble-text {
-            width: 100%; height: 100%; box-sizing: border-box; border: none; outline: none; resize: none;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.95em;
-            line-height: 1.4; background-color: transparent; padding: 5px; user-select: text; cursor: auto;
-        }
-
-        /* --- Group Tile Specifics --- */
-        .tile.group {
-            background-color: #e0e8ff; /* Light blue */
-            border-color: #a0b0e0;
-            transition: all 0.3s ease-in-out;
-        }
-        .tile.group .tile-header::before {
-            background-color: rgba(160, 176, 224, 0.4);
-        }
-        .tile.group .group-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
-            color: #445a8a;
-        }
-        .tile.group.expanded {
-            background-color: rgba(200, 210, 240, 0.5);
-            border: 2px dashed #a0b0e0;
-            padding: 0;
-            z-index: 8; /* Below normal tiles */
-        }
-        .tile.group.expanded .tile-header {
-            background-color: rgba(160, 176, 224, 0.6);
-            cursor: pointer;
-            margin: 0;
-            padding: 10px;
-            border-bottom: 2px dashed #a0b0e0;
-            border-radius: 3px 3px 0 0;
-        }
-        .tile.group.expanded .tile-header::before { display: none; }
-        .tile.group.expanded .tile-content { display: none; }
-        .tile.group.expanded .resizer, .tile.group.expanded .delete-btn {
+        /* Loading */
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
             display: none;
-        }
-        .tile.hidden-child {
-            display: none !important;
+            z-index: 2000;
         }
 
-
-        .resizer {
-            position: absolute; width: 15px; height: 15px;
-            background: rgba(0, 123, 255, 0.3); border: 1px solid rgba(0, 123, 255, 0.6);
-            bottom: -1px; right: -1px; cursor: nwse-resize;
-            z-index: 12; border-radius: 0 0 3px 0;
+        /* Info Panel */
+        #info-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 12px;
+            color: #7f8c8d;
+            z-index: 500;
         }
 
-        /* --- Context Menu --- */
-        #context-menu {
-            position: absolute; background-color: #fff; border: 1px solid #ccc;
-            box-shadow: 3px 3px 8px rgba(0,0,0,0.15); padding: 5px 0; min-width: 150px;
-            z-index: 100; display: none; border-radius: 4px;
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
         }
-        #context-menu ul { list-style: none; margin: 0; padding: 0; }
-        #context-menu ul li { padding: 8px 15px; cursor: pointer; font-size: 0.95em; position: relative; white-space: nowrap; }
-        #context-menu ul li:hover { background-color: #f0f0f0; }
-        #context-menu ul li.disabled { color: #aaa; cursor: not-allowed; background-color: #fff; }
-        #context-menu .separator { height: 1px; background-color: #eee; margin: 5px 0; }
 
-        /* SVG Arrows */
-        #arrow-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }
-        .arrow { stroke: #5a5a5a; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #bdc3c7;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #95a5a6;
+        }
     </style>
 </head>
 <body>
-
-<div id="topbar">
-    <h1>Node-Based Dashboard</h1>
-    <div class="topbar-buttons">
-        <button id="save-btn">Save Workflow</button>
+    <div id="topbar">
+        <h1>Knowledge Tree Workflow Visualizer</h1>
         <button id="load-btn">Load Workflow</button>
-        <input type="file" id="file-loader" accept=".json, .txt">
+        <button id="fit-btn">Fit to Screen</button>
+        <button id="reset-btn">Reset View</button>
+        <input type="file" id="file-input" accept=".json">
     </div>
-</div>
 
-<div id="canvas">
-    <svg id="arrow-layer">
-        <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L10,3.5 L0,7 Z" fill="#5a5a5a" />
-            </marker>
-        </defs>
-    </svg>
-</div>
-
-<div id="context-menu">
-    <ul>
-        <li id="add-scribble-pad">Add Scribble Note</li>
-        <li class="separator"></li>
-        <li id="group-selection">Group Selection</li>
-    </ul>
-</div>
-
-<template id="scribble-template">
-    <div class="tile scribble" id="">
-        <div class="tile-header">
-            <h3 class="tile-title" contenteditable="false">Scribble Pad</h3>
-            <span class="delete-btn" title="Delete">×</span>
+    <div id="canvas">
+        <div id="viewport">
+            <svg id="links-svg">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" 
+                            refX="8" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" class="link-arrow"/>
+                    </marker>
+                </defs>
+            </svg>
         </div>
-        <div class="tile-content">
-            <textarea class="scribble-text" placeholder="Start typing..."></textarea>
-        </div>
-        <div class="resizer"></div>
     </div>
-</template>
 
-<template id="group-template">
-    <div class="tile group" id="">
-        <div class="tile-header">
-            <h3 class="tile-title" contenteditable="false">New Group</h3>
-            <span class="delete-btn" title="Delete Group">×</span>
-        </div>
-        <div class="tile-content group-content">
-            <p>This is a group. Double-click to expand.</p>
-        </div>
-        <div class="resizer"></div>
+    <div id="info-panel">
+        Click nodes to select • Double-click to expand/collapse
     </div>
-</template>
 
+    <div id="loading">Loading workflow...</div>
 
-<script>
-    // --- Element Cache ---
-    const canvas = document.getElementById('canvas');
-    const contextMenu = document.getElementById('context-menu');
-    const scribbleTemplate = document.getElementById('scribble-template');
-    const groupTemplate = document.getElementById('group-template');
-    const svgLayer = document.getElementById('arrow-layer');
-    const fileLoader = document.getElementById('file-loader');
+    <script>
+        // State management
+        let workflow = { items: {}, links: [] };
+        let selectedNode = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
 
-    // --- State Variables ---
-    let items = {};
-    let links = [];
-    let selectedItemIds = [];
-    let nextItemId = 1;
-    let nextLinkId = 1;
-    let currentPasteCoords = { x: 100, y: 100 };
-    
-    // --- Constants ---
-    const DEFAULT_TILE_WIDTH = 300;
-    const DEFAULT_TILE_HEIGHT = 200;
+        // DOM elements
+        const canvas = document.getElementById('canvas');
+        const viewport = document.getElementById('viewport');
+        const linksSvg = document.getElementById('links-svg');
+        const loadBtn = document.getElementById('load-btn');
+        const fileInput = document.getElementById('file-input');
+        const fitBtn = document.getElementById('fit-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const loading = document.getElementById('loading');
 
-    // --- Initialization ---
-    function initialize() {
-        setupCanvasListeners();
-        setupGlobalListeners();
-        setupContextMenuListeners();
-        setupTopbarListeners();
-        loadState();
-    }
+        // Initialize
+        loadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileLoad);
+        fitBtn.addEventListener('click', fitToScreen);
+        resetBtn.addEventListener('click', resetView);
 
-    // --- UI & Event Listeners ---
-    function setupCanvasListeners() {
-        canvas.addEventListener('contextmenu', (e) => {
+        // File loading
+        function handleFileLoad(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            loading.style.display = 'block';
+            const reader = new FileReader();
+            
+            reader.onload = (event) => {
+                try {
+                    workflow = JSON.parse(event.target.result);
+                    renderWorkflow();
+                    loading.style.display = 'none';
+                    fitToScreen();
+                } catch (error) {
+                    alert('Error loading workflow: ' + error.message);
+                    loading.style.display = 'none';
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        // Render workflow
+        function renderWorkflow() {
+            // Clear existing content
+            viewport.innerHTML = '';
+            viewport.appendChild(linksSvg);
+            
+            // Create nodes
+            Object.values(workflow.items).forEach(item => {
+                createNode(item);
+            });
+            
+            // Update links
+            updateLinks();
+            
+            // Update viewport size
+            updateViewportSize();
+        }
+
+        // Create node element
+        function createNode(item) {
+            const node = document.createElement('div');
+            node.className = `node ${item.type}`;
+            node.id = item.id;
+            node.style.left = item.x + 'px';
+            node.style.top = item.y + 'px';
+            node.style.width = item.width + 'px';
+            node.style.height = item.height + 'px';
+            
+            // Header
+            const header = document.createElement('div');
+            header.className = 'node-header';
+            
+            // Icon
+            const icon = document.createElement('div');
+            icon.className = 'node-icon';
+            icon.innerHTML = item.type === 'group' ? '📁' : '📝';
+            
+            // Title
+            const title = document.createElement('div');
+            title.className = 'node-title';
+            title.textContent = item.data.title;
+            
+            // Expand icon
+            const expandIcon = document.createElement('div');
+            expandIcon.className = 'node-expand-icon';
+            expandIcon.innerHTML = '▶';
+            
+            header.appendChild(icon);
+            header.appendChild(title);
+            if (item.data.content || (item.type === 'group' && item.data.children)) {
+                header.appendChild(expandIcon);
+            }
+            
+            // Content
+            const content = document.createElement('div');
+            content.className = 'node-content';
+            
+            if (item.data.content) {
+                content.innerHTML = parseMarkdown(item.data.content);
+            } else if (item.type === 'group' && item.data.children) {
+                content.innerHTML = `<p>Contains ${item.data.children.length} items</p>`;
+            }
+            
+            node.appendChild(header);
+            node.appendChild(content);
+            
+            // Event listeners
+            node.addEventListener('click', (e) => selectNode(node, e));
+            node.addEventListener('dblclick', (e) => toggleNode(node, e));
+            header.addEventListener('mousedown', (e) => startDrag(node, e));
+            
+            // Restore expanded state
+            if (item.data.isExpanded) {
+                node.classList.add('expanded');
+            }
+            
+            viewport.appendChild(node);
+        }
+
+        // Parse basic markdown
+        function parseMarkdown(text) {
+            if (!text) return '';
+            
+            // Escape HTML
+            text = text.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;');
+            
+            // Headers
+            text = text.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+            
+            // Bold
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            
+            // Lists
+            text = text.replace(/^\* (.+)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+            
+            // Code
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Paragraphs
+            text = text.split('\n\n').map(para => {
+                if (!para.startsWith('<')) {
+                    return `<p>${para}</p>`;
+                }
+                return para;
+            }).join('\n');
+            
+            return text;
+        }
+
+        // Node selection
+        function selectNode(node, e) {
+            e.stopPropagation();
+            
+            // Deselect previous
+            if (selectedNode) {
+                selectedNode.classList.remove('selected');
+            }
+            
+            // Select new
+            selectedNode = node;
+            node.classList.add('selected');
+        }
+
+        // Toggle node expansion
+        function toggleNode(node, e) {
+            e.stopPropagation();
+            node.classList.toggle('expanded');
+            
+            // Update item data
+            const item = workflow.items[node.id];
+            if (item) {
+                item.data.isExpanded = node.classList.contains('expanded');
+            }
+            
+            // Adjust node height
+            if (node.classList.contains('expanded')) {
+                const content = node.querySelector('.node-content');
+                const header = node.querySelector('.node-header');
+                const contentHeight = content.scrollHeight;
+                const totalHeight = header.offsetHeight + contentHeight + 32; // padding
+                node.style.height = Math.min(totalHeight, 500) + 'px';
+            } else {
+                const item = workflow.items[node.id];
+                node.style.height = item.height + 'px';
+            }
+            
+            updateLinks();
+        }
+
+        // Dragging
+        function startDrag(node, e) {
+            if (e.target.classList.contains('node-expand-icon')) return;
+            
+            isDragging = true;
+            const rect = node.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            dragOffset = {
+                x: e.clientX - rect.left + canvasRect.left + canvas.scrollLeft,
+                y: e.clientY - rect.top + canvasRect.top + canvas.scrollTop
+            };
+            
+            selectNode(node, e);
+            
+            document.addEventListener('mousemove', handleDrag);
+            document.addEventListener('mouseup', stopDrag);
             e.preventDefault();
-            const groupOption = document.getElementById('group-selection');
-            groupOption.classList.toggle('disabled', selectedItemIds.length <= 1);
-            showContextMenu(e);
-            if (!e.target.closest('.tile')) {
-                deselectAllItems();
-            }
-        });
-        canvas.addEventListener('click', (e) => {
-            if (!e.target.closest('.tile') && !e.target.closest('#context-menu')) {
-                 if (!e.shiftKey) deselectAllItems();
-                 hideContextMenu();
-            }
-        });
-    }
-
-    function setupGlobalListeners() {
-        document.addEventListener('keydown', (e) => {
-            const isEditing = document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable;
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemIds.length > 0 && !isEditing) {
-                e.preventDefault();
-                if (confirm(`Delete ${selectedItemIds.length} selected item(s)?`)) {
-                    [...selectedItemIds].forEach(id => deleteItem(id));
-                }
-            }
-        });
-        document.addEventListener('click', (e) => {
-             if (!contextMenu.contains(e.target)) hideContextMenu();
-        }, true);
-    }
-
-    function setupContextMenuListeners() {
-        document.getElementById('add-scribble-pad').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY };
-            createAndAddItem('scribble', coords);
-            hideContextMenu();
-        });
-        document.getElementById('group-selection').addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (selectedItemIds.length > 1) createGroupFromSelection();
-            hideContextMenu();
-        });
-    }
-
-    function setupTopbarListeners() {
-        document.getElementById('save-btn').addEventListener('click', handleSave);
-        document.getElementById('load-btn').addEventListener('click', () => fileLoader.click());
-        fileLoader.addEventListener('change', handleLoad);
-    }
-
-    function showContextMenu(e) {
-        const { clientX, clientY, pageX, pageY } = e;
-        contextMenu.style.left = `${clientX}px`;
-        contextMenu.style.top = `${clientY}px`;
-        contextMenu.style.display = 'block';
-        contextMenu.dataset.pageX = pageX;
-        contextMenu.dataset.pageY = pageY;
-    }
-
-    function hideContextMenu() { contextMenu.style.display = 'none'; }
-
-    // --- Item Management ---
-    function createAndAddItem(type, coords, presetData = null) {
-        const newItemId = `item-${nextItemId++}`;
-        const template = type === 'group' ? groupTemplate : scribbleTemplate;
-        const node = template.content.cloneNode(true);
-        const element = node.querySelector('.tile');
-        element.id = newItemId;
-
-        const spawnX = parseInt(coords?.pageX || coords?.x || currentPasteCoords.x, 10);
-        const spawnY = parseInt(coords?.pageY || coords?.y || currentPasteCoords.y, 10);
-        element.style.left = `${spawnX}px`;
-        element.style.top = `${spawnY}px`;
-        
-        const itemData = { title: presetData?.title || (type === 'group' ? 'New Group' : 'Scribble Pad') };
-        if (type === 'scribble') itemData.content = presetData?.content || '';
-        if (type === 'group') {
-            itemData.children = presetData?.children || [];
-            itemData.isExpanded = false;
         }
 
-        element.querySelector('.tile-title').textContent = itemData.title;
-
-        element.style.width = `${presetData?.width || DEFAULT_TILE_WIDTH}px`;
-        element.style.height = `${presetData?.height || DEFAULT_TILE_HEIGHT}px`;
-
-        canvas.appendChild(element);
-        items[newItemId] = {
-            id: newItemId, type, x: spawnX, y: spawnY,
-            width: parseInt(element.style.width),
-            height: parseInt(element.style.height),
-            data: itemData, element,
-            parentId: presetData?.parentId || null
-        };
-
-        setupTileInteraction(element);
-        if (!presetData) {
-            deselectAllItems();
-            selectItem(newItemId);
-            saveState();
+        function handleDrag(e) {
+            if (!isDragging || !selectedNode) return;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            const x = e.clientX - canvasRect.left + canvas.scrollLeft - dragOffset.x;
+            const y = e.clientY - canvasRect.top + canvas.scrollTop - dragOffset.y;
+            
+            selectedNode.style.left = Math.max(0, x) + 'px';
+            selectedNode.style.top = Math.max(0, y) + 'px';
+            
+            // Update item position
+            const item = workflow.items[selectedNode.id];
+            if (item) {
+                item.x = Math.max(0, x);
+                item.y = Math.max(0, y);
+            }
+            
+            updateLinks();
+            updateViewportSize();
         }
-        return newItemId;
-    }
 
-    function deleteItem(itemId) {
-        if (!items[itemId]) return;
-        const itemToDelete = items[itemId];
+        function stopDrag() {
+            isDragging = false;
+            document.removeEventListener('mousemove', handleDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
 
-        if (itemToDelete.type === 'group') {
-            itemToDelete.data.children.forEach(childId => {
-                if(items[childId]) {
-                    items[childId].parentId = null;
-                    items[childId].element.classList.remove('hidden-child');
-                }
+        // Update links
+        function updateLinks() {
+            // Clear existing links
+            linksSvg.querySelectorAll('.link').forEach(link => link.remove());
+            
+            // Draw new links
+            workflow.links.forEach(link => {
+                const source = document.getElementById(link.sourceId);
+                const target = document.getElementById(link.targetId);
+                
+                if (!source || !target) return;
+                
+                const sourceRect = source.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                // Calculate connection points
+                const sx = sourceRect.left - canvasRect.left + canvas.scrollLeft + sourceRect.width / 2;
+                const sy = sourceRect.bottom - canvasRect.top + canvas.scrollTop;
+                const tx = targetRect.left - canvasRect.left + canvas.scrollLeft + targetRect.width / 2;
+                const ty = targetRect.top - canvasRect.top + canvas.scrollTop;
+                
+                // Create path
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.classList.add('link');
+                path.setAttribute('d', `M ${sx} ${sy} L ${tx} ${ty}`);
+                path.setAttribute('marker-end', 'url(#arrowhead)');
+                
+                linksSvg.appendChild(path);
             });
+            
+            updateSvgSize();
         }
-        
-        links = links.filter(link => {
-            if (link.sourceId === itemId || link.targetId === itemId) return false;
-            return true;
-        });
 
-        itemToDelete.element.remove();
-        delete items[itemId];
-        
-        selectedItemIds = selectedItemIds.filter(id => id !== itemId);
-        
-        updateArrows();
-        saveState();
-    }
-    
-    function setupTileInteraction(tileElement) {
-        const itemId = tileElement.id;
-        const headerElement = tileElement.querySelector('.tile-header');
-        
-        interact(tileElement).draggable({
-            allowFrom: headerElement,
-            listeners: {
-                start(event) {
-                    if (!selectedItemIds.includes(itemId)) {
-                        selectItem(itemId, event.shiftKey);
-                    }
-                    bringToFront(itemId);
-                },
-                move(event) {
-                    const movedItems = new Set();
-                    selectedItemIds.forEach(selectedId => {
-                        if (movedItems.has(selectedId)) return;
-                        const targetItem = items[selectedId];
-                        if (!targetItem) return;
-
-                        const dx = event.dx;
-                        const dy = event.dy;
-                        
-                        targetItem.x += dx;
-                        targetItem.y += dy;
-                        targetItem.element.style.left = `${targetItem.x}px`;
-                        targetItem.element.style.top = `${targetItem.y}px`;
-                        movedItems.add(selectedId);
-
-                        if (targetItem.type === 'group') {
-                            targetItem.data.children.forEach(childId => {
-                                const childItem = items[childId];
-                                if(childItem && !selectedItemIds.includes(childId)) {
-                                    childItem.x += dx;
-                                    childItem.y += dy;
-                                    childItem.element.style.left = `${childItem.x}px`;
-                                    childItem.element.style.top = `${childItem.y}px`;
-                                    movedItems.add(childId);
-                                }
-                            });
-                        }
-                    });
-                    updateArrows();
-                },
-                end: () => saveState()
-            }
-        });
-
-        interact(tileElement).resizable({
-             edges: { right: true, bottom: true }, allowFrom: '.resizer',
-             listeners: {
-                 move: (event) => {
-                     const item = items[itemId];
-                     if (!item) return;
-                     item.width = event.rect.width;
-                     item.height = event.rect.height;
-                     event.target.style.width = `${item.width}px`;
-                     event.target.style.height = `${item.height}px`;
-                     updateArrows();
-                 },
-                 end: () => saveState()
-             },
-             modifiers: [interact.modifiers.restrictSize({ min: { width: 200, height: 100 } })]
-        });
-
-        tileElement.addEventListener('click', (e) => {
-            if (e.target.closest('.resizer') || e.target.closest('.delete-btn') || e.target.tagName === 'TEXTAREA') return;
-            selectItem(itemId, e.shiftKey);
-            e.stopPropagation();
-        });
-
-        tileElement.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            if (items[itemId]?.type === 'group') toggleGroupExpansion(itemId);
-            else if (e.target.classList.contains('tile-title')) makeTitleEditable(e.target, itemId);
-        });
-
-        tileElement.querySelector('.delete-btn')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm(`Delete this item?`)) deleteItem(itemId);
-        });
-
-        tileElement.querySelector('.scribble-text')?.addEventListener('change', (e) => {
-            items[itemId].data.content = e.target.value;
-            saveState();
-        });
-    }
-
-    function makeTitleEditable(titleElement, itemId) {
-        titleElement.setAttribute('contenteditable', 'true');
-        titleElement.focus();
-        document.execCommand('selectAll', false, null);
-        const onBlur = () => {
-            titleElement.setAttribute('contenteditable', 'false');
-            items[itemId].data.title = titleElement.textContent;
-            saveState();
-            titleElement.removeEventListener('blur', onBlur);
-            titleElement.removeEventListener('keydown', onKeydown);
-        };
-        const onKeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                titleElement.blur();
-            }
-        };
-        titleElement.addEventListener('blur', onBlur);
-        titleElement.addEventListener('keydown', onKeydown);
-    }
-    
-    function bringToFront(itemId) {
-        const element = items[itemId]?.element;
-        if (!element) return;
-        const maxZ = Math.max(10, ...Object.values(items).map(i => parseInt(i.element.style.zIndex || '10', 10)));
-        element.style.zIndex = maxZ + 1;
-    }
-
-    function selectItem(itemId, isMultiSelect = false) {
-        if (!isMultiSelect) deselectAllItems();
-
-        const index = selectedItemIds.indexOf(itemId);
-        const element = items[itemId]?.element;
-        if (!element) return;
-
-        if (index > -1) {
-            if (isMultiSelect) {
-                element.classList.remove('selected');
-                selectedItemIds.splice(index, 1);
-            }
-        } else {
-            element.classList.add('selected');
-            selectedItemIds.push(itemId);
-            bringToFront(itemId);
+        // Update viewport and SVG sizes
+        function updateViewportSize() {
+            let maxX = 0, maxY = 0;
+            
+            Object.values(workflow.items).forEach(item => {
+                maxX = Math.max(maxX, item.x + item.width + 50);
+                maxY = Math.max(maxY, item.y + item.height + 50);
+            });
+            
+            viewport.style.width = maxX + 'px';
+            viewport.style.height = maxY + 'px';
+            
+            updateSvgSize();
         }
-    }
 
-    function deselectAllItems() {
-        selectedItemIds.forEach(id => items[id]?.element.classList.remove('selected'));
-        selectedItemIds = [];
-    }
-    
-    function createGroupFromSelection() {
-        const groupPreset = {
-            title: "New Group",
-            children: [...selectedItemIds],
-        };
+        function updateSvgSize() {
+            linksSvg.setAttribute('width', viewport.style.width);
+            linksSvg.setAttribute('height', viewport.style.height);
+        }
 
-        const groupId = createAndAddItem('group', { pageX: items[selectedItemIds[0]].x - 50, pageY: items[selectedItemIds[0]].y - 50 }, groupPreset);
-
-        selectedItemIds.forEach(childId => {
-            if (items[childId]) {
-                items[childId].parentId = groupId;
-                items[childId].element.classList.add('hidden-child');
-            }
-        });
-        
-        deselectAllItems();
-        selectItem(groupId);
-        updateArrows();
-        saveState();
-    }
-
-    function toggleGroupExpansion(groupId) {
-        const group = items[groupId];
-        if (!group) return;
-
-        group.data.isExpanded = !group.data.isExpanded;
-        const groupElement = group.element;
-        groupElement.classList.toggle('expanded', group.data.isExpanded);
-
-        if (group.data.isExpanded) {
+        // View controls
+        function fitToScreen() {
+            if (Object.keys(workflow.items).length === 0) return;
+            
             let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-            let hasChildren = false;
-            group.data.children.forEach(childId => {
-                const child = items[childId];
-                if (child) {
-                    hasChildren = true;
-                    child.element.classList.remove('hidden-child');
-                    minX = Math.min(minX, child.x);
-                    minY = Math.min(minY, child.y);
-                    maxX = Math.max(maxX, child.x + child.width);
-                    maxY = Math.max(maxY, child.y + child.height);
-                }
+            
+            Object.values(workflow.items).forEach(item => {
+                minX = Math.min(minX, item.x);
+                minY = Math.min(minY, item.y);
+                maxX = Math.max(maxX, item.x + item.width);
+                maxY = Math.max(maxY, item.y + item.height);
             });
             
-            if (hasChildren) {
-                group.width = maxX - minX + 80;
-                group.height = maxY - minY + 80;
-                group.x = minX - 40;
-                group.y = minY - 40;
-            }
-            groupElement.style.width = `${group.width}px`;
-            groupElement.style.height = `${group.height}px`;
-            groupElement.style.left = `${group.x}px`;
-            groupElement.style.top = `${group.y}px`;
-        } else {
-            group.data.children.forEach(childId => items[childId]?.element.classList.add('hidden-child'));
-            group.width = DEFAULT_TILE_WIDTH;
-            group.height = DEFAULT_TILE_HEIGHT;
-            groupElement.style.width = `${group.width}px`;
-            groupElement.style.height = `${group.height}px`;
+            const padding = 50;
+            const contentWidth = maxX - minX + padding * 2;
+            const contentHeight = maxY - minY + padding * 2;
+            
+            canvas.scrollLeft = Math.max(0, minX - padding);
+            canvas.scrollTop = Math.max(0, minY - padding);
         }
-        
-        updateArrows();
-        saveState();
-    }
 
-    function updateArrows() {
-        svgLayer.innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,3.5 L0,7 Z" fill="#5a5a5a" /></marker></defs>`;
-        const canvasRect = canvas.getBoundingClientRect();
-        links.forEach(link => {
-            let sourceItem = items[link.sourceId];
-            let targetItem = items[link.targetId];
-            if (!sourceItem || !targetItem) return;
+        function resetView() {
+            canvas.scrollLeft = 0;
+            canvas.scrollTop = 0;
+        }
 
-            if (sourceItem.parentId && !items[sourceItem.parentId]?.data.isExpanded) sourceItem = items[sourceItem.parentId];
-            if (targetItem.parentId && !items[targetItem.parentId]?.data.isExpanded) targetItem = items[targetItem.parentId];
-            if (sourceItem === targetItem) return;
-
-            const sourceCenter = getElementCenter(sourceItem.element, canvasRect);
-            const targetCenter = getElementCenter(targetItem.element, canvasRect);
-            const dx = targetCenter.x - sourceCenter.x, dy = targetCenter.y - sourceCenter.y;
-            const len = Math.sqrt(dx*dx + dy*dy);
-            if (len < 1) return;
-
-            const startPoint = getEdgePoint(sourceItem.element.getBoundingClientRect(), dx, dy, canvasRect);
-            const endPoint = getEdgePoint(targetItem.element.getBoundingClientRect(), -dx, -dy, canvasRect);
-            
-            const nx = dx / len, ny = dy / len;
-            const lineEndX = endPoint.x - nx * 15, lineEndY = endPoint.y - ny * 15;
-
-            const path = document.createElementNS('[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)', 'path');
-            path.setAttribute('d', `M ${startPoint.x},${startPoint.y} L ${lineEndX},${lineEndY}`);
-            path.setAttribute('class', 'arrow');
-            svgLayer.appendChild(path);
-        });
-    }
-
-    function getElementCenter(element, canvasRect) {
-        const rect = element.getBoundingClientRect();
-        return { x: rect.left - canvasRect.left + rect.width / 2, y: rect.top - canvasRect.top + rect.height / 2 };
-    }
-
-    function getEdgePoint(rect, dx, dy, canvasRect) {
-        const cx = rect.left - canvasRect.left + rect.width / 2, cy = rect.top - canvasRect.top + rect.height / 2;
-        const w = rect.width / 2, h = rect.height / 2;
-        if (dx === 0 && dy === 0) return {x: cx, y: cy};
-        const slope = dy / dx;
-        if (Math.abs(slope) * w < h) return { x: cx + (dx > 0 ? w : -w), y: cy + slope * (dx > 0 ? w : -w) };
-        return { x: cx + (dy > 0 ? h / slope : -h / slope), y: cy + (dy > 0 ? h : -h) };
-    }
-
-    // --- Persistence ---
-    function saveState() {
-        localStorage.setItem('canvasAppState_v5', JSON.stringify(getSerializableState()));
-    }
-
-    function getSerializableState() {
-        return {
-            items: Object.fromEntries(Object.entries(items).map(([id, item]) => [id, {
-                id, type: item.type, x: item.x, y: item.y, width: item.width, height: item.height,
-                data: item.data, parentId: item.parentId
-            }])),
-            links, nextItemId, nextLinkId
-        };
-    }
-
-    function handleSave() {
-        const stateString = JSON.stringify(getSerializableState(), null, 2);
-        const blob = new Blob([stateString], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'dashboard-workflow.json';
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
-
-    function handleLoad(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            let content = e.target.result;
-            
-            // **FIX**: Clean the file content before parsing
-            const cleanedContent = content
-                .replace(/\\r?\n?/g, '') // Removes tags and potential newlines
-                .replace(/^```json\s*/, '')             // Removes opening ```json tag
-                .replace(/\s*```$/, '');                // Removes closing ``` tag
-
-            try {
-                const state = JSON.parse(cleanedContent);
-                loadStateFromObject(state);
-            } catch (error) {
-                console.error("Error parsing cleaned workflow file:", error);
-                alert("Invalid workflow file. Could not load.");
+        // Canvas click to deselect
+        canvas.addEventListener('click', (e) => {
+            if (e.target === canvas || e.target === viewport) {
+                if (selectedNode) {
+                    selectedNode.classList.remove('selected');
+                    selectedNode = null;
+                }
             }
-        };
-        reader.readAsText(file);
-        event.target.value = '';
-    }
-    
-    function loadState() {
-        const savedState = localStorage.getItem('canvasAppState_v5');
-        if (savedState) loadStateFromObject(JSON.parse(savedState));
-    }
-
-    function loadStateFromObject(state) {
-        canvas.querySelectorAll('.tile').forEach(tile => tile.remove());
-        items = {};
-        links = [];
-        selectedItemIds = [];
-
-        if (!state.items) return;
-        nextItemId = state.nextItemId || 1;
-        nextLinkId = state.nextLinkId || 1;
-        
-        Object.values(state.items).forEach(savedItem => createAndAddItem(savedItem.type, savedItem, savedItem));
-
-        Object.values(items).forEach(item => {
-             if (item.type === 'group' && item.data.isExpanded) toggleGroupExpansion(item.id);
         });
-
-        links = state.links || [];
-        updateArrows();
-        saveState();
-    }
-
-    initialize();
-</script>
-
+    </script>
 </body>
 </html>
