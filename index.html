@@ -386,19 +386,18 @@
 
         /* Links */
         .link {
-            fill: none;
             stroke: #9e9e9e;
-            color: #9e9e9e; /* This is the key for arrowhead color */
+            fill: #9e9e9e; /* This provides the color for the marker */
             stroke-width: 3;
             opacity: 0.7;
             cursor: pointer;
             pointer-events: stroke;
-            transition: stroke 0.2s, color 0.2s;
+            transition: stroke 0.2s, fill 0.2s;
         }
         
         .link:hover {
             stroke: #616161;
-            color: #616161; /* This is the key for arrowhead color on hover */
+            fill: #616161; /* This updates the color for the marker on hover */
             stroke-width: 4;
             opacity: 1;
         }
@@ -411,7 +410,7 @@
         }
 
         .link-arrow {
-            fill: currentColor; /* Inherits the 'color' property from the .link path */
+            fill: currentColor; /* Inherits the 'fill' property from the .link path */
         }
 
         /* Context Menu */
@@ -949,6 +948,7 @@
                 for (let i = 1; i < pathPoints.length; i++) pathString += ` L ${pathPoints[i].x} ${pathPoints[i].y}`;
                 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('fill', 'none'); // Set fill to none here
                 path.classList.add('link');
                 path.setAttribute('d', pathString);
                 path.setAttribute('marker-end', 'url(#arrowhead)');
