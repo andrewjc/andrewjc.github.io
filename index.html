@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Enhanced Node-Based Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="[https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js](https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js)"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,7 +12,7 @@
             background-color: #f0f0f0;
         }
 
-        /* --- NEW: Topbar --- */
+        /* --- Topbar --- */
         #topbar {
             position: fixed;
             top: 0;
@@ -145,7 +145,6 @@
             user-select: text;
         }
 
-        /* --- Type Change Dropdown --- */
         .tile .tile-header .change-type-btn {
             font-size: 1.1em; cursor: pointer; color: #bbb; padding: 0 3px;
             margin-right: 5px; line-height: 1; z-index: 1; font-family: sans-serif;
@@ -185,25 +184,13 @@
         }
         .tile textarea { resize: none; min-height: 50px; font-family: inherit; flex-grow: 1; }
 
-        /* Data Tile Specifics */
-        .tile.data .data-image { max-width: 100%; height: auto; display: block; margin-top: 5px; }
-        .tile.data .data-text { width: 100%; height: 100%; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; }
-
-        /* Estimator Tile Specifics */
-        .tile.estimator h4 { font-size: 1em; margin-bottom: 8px; border-bottom: none; }
-        .tile.estimator p { margin: 4px 0; font-size: 0.95em; cursor: default; }
-        .tile.estimator strong { font-weight: bold; color: #0056b3; }
-        .tile.estimator .result { margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; font-size: 1.1em; font-weight: bold; color: #004085; cursor: default; }
-
-        /* Scribble Pad Tile Specifics */
-        .tile.scribble .tile-content { padding: 5px; }
         .tile.scribble .scribble-text {
             width: 100%; height: 100%; box-sizing: border-box; border: none; outline: none; resize: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.95em;
             line-height: 1.4; background-color: transparent; padding: 5px; user-select: text; cursor: auto;
         }
 
-        /* --- NEW: Group Tile Specifics --- */
+        /* --- Group Tile Specifics --- */
         .tile.group {
             background-color: #e0e8ff; /* Light blue */
             border-color: #a0b0e0;
@@ -261,30 +248,7 @@
         #context-menu ul li { padding: 8px 15px; cursor: pointer; font-size: 0.95em; position: relative; white-space: nowrap; }
         #context-menu ul li:hover { background-color: #f0f0f0; }
         #context-menu ul li.disabled { color: #aaa; cursor: not-allowed; background-color: #fff; }
-        #context-menu ul li.has-submenu::after { content: '▶'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.8em; color: #888; }
-        #context-menu ul ul {
-            position: absolute; left: 100%; top: -5px; display: none; background-color: #fff;
-            border: 1px solid #ccc; box-shadow: 3px 3px 8px rgba(0,0,0,0.15); padding: 5px 0;
-            min-width: 250px; max-height: 400px; overflow-y: auto; border-radius: 4px;
-        }
-        #context-menu ul li:hover > ul { display: block; }
         #context-menu .separator { height: 1px; background-color: #eee; margin: 5px 0; }
-
-        /* Type Change Menu */
-        #type-change-menu {
-            position: absolute; background-color: #fff; border: 1px solid #ccc;
-            box-shadow: 2px 2px 6px rgba(0,0,0,0.15); padding: 4px 0; min-width: 120px;
-            z-index: 101; display: none; border-radius: 3px;
-        }
-        #type-change-menu ul { list-style: none; margin: 0; padding: 0; }
-        #type-change-menu ul li { padding: 6px 12px; cursor: pointer; font-size: 0.9em; white-space: nowrap; }
-        #type-change-menu ul li:hover { background-color: #f0f0f0; }
-        #type-change-menu ul li.disabled { color: #aaa; cursor: not-allowed; background-color: #fff; }
-
-        .tile.task .description.editing {
-            background-color: rgba(255, 255, 0, 0.2); outline: 1px dashed #ccc; padding: 3px;
-            margin: -3px; cursor: text; user-select: text; white-space: pre-wrap; min-height: 1.5em;
-        }
 
         /* SVG Arrows */
         #arrow-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }
@@ -298,7 +262,7 @@
     <div class="topbar-buttons">
         <button id="save-btn">Save Workflow</button>
         <button id="load-btn">Load Workflow</button>
-        <input type="file" id="file-loader" accept=".json">
+        <input type="file" id="file-loader" accept=".json, .txt">
     </div>
 </div>
 
@@ -314,85 +278,17 @@
 
 <div id="context-menu">
     <ul>
-        <li id="add-general-task">General Task</li>
-        <li id="add-preset-task" class="has-submenu">
-            Presets
-            <ul id="preset-submenu"><li>Loading...</li></ul>
-        </li>
-        <li id="add-estimator">Estimator</li>
-        <li id="add-scribble-pad">Scribble Pad</li>
+        <li id="add-scribble-pad">Add Scribble Note</li>
         <li class="separator"></li>
         <li id="group-selection">Group Selection</li>
     </ul>
 </div>
 
-<div id="type-change-menu"><ul></ul></div>
-
-<template id="task-template">
-    <div class="tile task" id="">
-        <div class="tile-header">
-            <h3 class="tile-title">New Task</h3>
-            <span class="change-type-btn" title="Change Type">▾</span>
-            <span class="delete-btn" title="Delete Task">×</span>
-        </div>
-        <div class="tile-content">
-            <p class="description" style="font-size: 0.85em; color: #666; margin-bottom: 10px; display: none;"></p>
-            <label><span>Complexity (SP):</span> <select class="complexity"></select> </label>
-            <label><span>Risk Factor (0-1):</span> <input type="number" step="0.05" min="0" max="1" class="risk" value="0.1"> </label>
-            <label><span>Priority (1-5):</span> <input type="number" class="priority" value="3" min="1" max="5" step="1"> </label>
-            <label><span>Base Duration (days):</span> <input type="number" step="0.5" min="0.5" class="duration" value="1"> </label>
-        </div>
-        <div class="resizer"></div>
-    </div>
-</template>
-
-<template id="estimator-template">
-    <div class="tile estimator" id="">
-        <div class="tile-header">
-            <h3 class="tile-title">Project Estimator</h3>
-            <span class="change-type-btn" title="Change Type">▾</span>
-            <span class="delete-btn" title="Delete Estimator">×</span>
-        </div>
-        <div class="tile-content">
-            <h4>Team & Project Factors</h4>
-            <label><span>Team Members (R):</span> <input type="number" id="team-members" value="5" min="1"> </label>
-            <label><span>Hours/Day/Member (D):</span> <input type="number" id="working-hours" value="8" min="1" step="0.5"> </label>
-            <label><span>Overhead Factor (O):</span> <input type="number" step="0.01" id="overhead" value="0.15" min="0" max="0.99"> </label>
-            <label><span>Productivity (P):</span> <input type="number" step="0.01" id="productivity" value="0.85" min="0.1" max="1.5"> </label>
-            <label><span>Maturity/Learn (L):</span> <input type="number" step="0.05" id="learning-curve" value="1.0" min="0.5"> </label>
-            <label><span>Hours per SP (H):</span> <input type="number" step="0.1" id="hours-per-story-point" value="4" min="0.5"> </label>
-            <div class="result">
-                <p>Total Base SP: <strong id="result-base-sp">0</strong></p>
-                <p>Total Adjusted SP: <strong id="result-adj-sp">0</strong></p>
-                <p>Team Velocity (SP/day): <strong id="result-velocity">0</strong></p>
-                <p>Est. Duration (days): <strong id="result-duration">N/A</strong></p>
-            </div>
-        </div>
-        <div class="resizer"></div>
-    </div>
-</template>
-
-<template id="data-template">
-    <div class="tile data" id="">
-        <div class="tile-header">
-            <h3 class="tile-title">Data</h3>
-            <span class="change-type-btn" title="Change Type">▾</span>
-            <span class="delete-btn" title="Delete Data">×</span>
-        </div>
-        <div class="tile-content">
-            <img class="data-image" src="" alt="Pasted image" style="display: none;">
-            <textarea class="data-text" placeholder="Pasted text..." style="display: none;"></textarea>
-        </div>
-        <div class="resizer"></div>
-    </div>
-</template>
-
 <template id="scribble-template">
     <div class="tile scribble" id="">
         <div class="tile-header">
-            <h3 class="tile-title">Scribble Pad</h3>
-            <span class="change-type-btn" title="Change Type">▾</span>
-            <span class="delete-btn" title="Delete Scribble Pad">×</span>
+            <h3 class="tile-title" contenteditable="false">Scribble Pad</h3>
+            <span class="delete-btn" title="Delete">×</span>
         </div>
         <div class="tile-content">
             <textarea class="scribble-text" placeholder="Start typing..."></textarea>
@@ -404,8 +300,7 @@
 <template id="group-template">
     <div class="tile group" id="">
         <div class="tile-header">
-            <h3 class="tile-title">New Group</h3>
-            <span class="change-type-btn" title="Change Type">▾</span>
+            <h3 class="tile-title" contenteditable="false">New Group</h3>
             <span class="delete-btn" title="Delete Group">×</span>
         </div>
         <div class="tile-content group-content">
@@ -420,273 +315,137 @@
     // --- Element Cache ---
     const canvas = document.getElementById('canvas');
     const contextMenu = document.getElementById('context-menu');
-    const taskTemplate = document.getElementById('task-template');
-    const estimatorTemplate = document.getElementById('estimator-template');
-    const dataTemplate = document.getElementById('data-template');
     const scribbleTemplate = document.getElementById('scribble-template');
     const groupTemplate = document.getElementById('group-template');
     const svgLayer = document.getElementById('arrow-layer');
-    const presetSubmenu = document.getElementById('preset-submenu');
-    const typeChangeMenu = document.getElementById('type-change-menu');
     const fileLoader = document.getElementById('file-loader');
-
-
-    const LOCAL_STORAGE_KEY = 'canvasAppState_v4'; // Incremented version
 
     // --- State Variables ---
     let items = {};
     let links = [];
-    let selectedItemIds = []; // MODIFIED: For multi-select
+    let selectedItemIds = [];
     let nextItemId = 1;
     let nextLinkId = 1;
     let currentPasteCoords = { x: 100, y: 100 };
-    let activeTypeChangeMenuTarget = null;
-
+    
     // --- Constants ---
-    const MARKER_WIDTH = 10;
     const DEFAULT_TILE_WIDTH = 300;
     const DEFAULT_TILE_HEIGHT = 200;
-    const fibonacciNumbers = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
-    const commonTasks = [ { title: "Create API Endpoint", description: "Develop a new RESTful API endpoint.", complexity: 5, risk: 0.25, priority: 5, duration: 5 }, { title: "Create API Swagger Documentation", description: "Develop Swagger/OpenAPI documentation for a RESTful API endpoint.", complexity: 2, risk: 0.1, priority: 1, duration: 2 }, { title: "Implement Authentication", description: "Set up authentication mechanisms using Spring Security.", complexity: 8, risk: 0.3, priority: 5, duration: 8 } ]; // Truncated for brevity
 
     // --- Initialization ---
     function initialize() {
-        populatePresets();
         setupCanvasListeners();
         setupGlobalListeners();
-        setupPasteListener();
         setupContextMenuListeners();
-        setupTopbarListeners(); // NEW
-        loadState(); // Load from localStorage on startup
+        setupTopbarListeners();
+        loadState();
     }
 
-    // --- UI Setup ---
-    function populatePresets() {
-        if (!presetSubmenu) { console.error("Preset submenu element not found!"); return; }
-        presetSubmenu.innerHTML = '';
-        if (!Array.isArray(commonTasks) || commonTasks.length === 0) {
-            const li = document.createElement('li'); li.textContent = 'No presets available'; li.style.color = '#888'; presetSubmenu.appendChild(li); return;
-        }
-        try {
-            commonTasks.forEach((task, index) => {
-                if (!task || typeof task.title !== 'string' || !task.title.trim()) { console.warn(`Skipping invalid task preset at index ${index}:`, task); return; }
-                const li = document.createElement('li'); li.textContent = task.title.trim(); li.title = task.description || `Preset: ${task.title.trim()}`; li.dataset.presetIndex = index;
-                li.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const clickedIndex = parseInt(e.currentTarget.dataset.presetIndex);
-                    if (isNaN(clickedIndex) || clickedIndex < 0 || clickedIndex >= commonTasks.length) { console.error("Invalid preset index on click:", e.currentTarget.dataset.presetIndex); hideContextMenu(); return; }
-                    const preset = commonTasks[clickedIndex];
-                    const pageXStr = contextMenu.dataset.pageX; const pageYStr = contextMenu.dataset.pageY;
-                    let coords = {};
-                    if (pageXStr && pageYStr) { coords.pageX = parseInt(pageXStr, 10); coords.pageY = parseInt(pageYStr, 10); }
-                    if (isNaN(coords.pageX) || isNaN(coords.pageY)) { coords = { pageX: currentPasteCoords.x, pageY: currentPasteCoords.y }; coords.pageX = parseInt(coords.pageX, 10); coords.pageY = parseInt(coords.pageY, 10); }
-                    if (isNaN(coords.pageX) || isNaN(coords.pageY)) { console.error("Failed to determine valid coordinates for preset task."); hideContextMenu(); return; }
-                    createAndAddItem('task', coords, preset);
-                    hideContextMenu();
-                });
-                presetSubmenu.appendChild(li);
-            });
-        } catch (error) {
-            console.error("Error populating presets:", error);
-            presetSubmenu.innerHTML = ''; const errorLi = document.createElement('li'); errorLi.textContent = 'Error loading presets'; errorLi.style.color = 'red'; presetSubmenu.appendChild(errorLi);
-        }
-    }
-
+    // --- UI & Event Listeners ---
     function setupCanvasListeners() {
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            // If right-clicking the canvas itself, show the menu
-            if (e.target === canvas || e.target.closest('#arrow-layer')) {
-                showContextMenu(e);
-                // If not clicking on an already selected item, clear previous selections
-                if (!selectedItemIds.some(id => items[id]?.element?.contains(e.target))) {
-                    deselectAllItems();
-                }
-            } else {
-                // If right-clicking a tile, the tile's own listener will handle selection.
-                // We still show the context menu.
-                showContextMenu(e);
+            const groupOption = document.getElementById('group-selection');
+            groupOption.classList.toggle('disabled', selectedItemIds.length <= 1);
+            showContextMenu(e);
+            if (!e.target.closest('.tile')) {
+                deselectAllItems();
             }
         });
         canvas.addEventListener('click', (e) => {
-            // Click on canvas background
-            const clickedOnTile = e.target.closest('.tile');
-            if (!clickedOnTile && !contextMenu.contains(e.target) && !typeChangeMenu.contains(e.target)) {
-                 currentPasteCoords = { x: e.pageX, y: e.pageY };
+            if (!e.target.closest('.tile') && !e.target.closest('#context-menu')) {
+                 if (!e.shiftKey) deselectAllItems();
                  hideContextMenu();
-                 hideTypeChangeMenu();
-                 if (!e.shiftKey) { // MODIFIED: Deselect only if shift is not pressed
-                     deselectAllItems();
-                 }
             }
         });
-        canvas.addEventListener('mousemove', (e) => { if (e.target === canvas) { currentPasteCoords = { x: e.pageX, y: e.pageY }; } });
     }
 
     function setupGlobalListeners() {
         document.addEventListener('keydown', (e) => {
-            const activeElement = document.activeElement;
-            const isEditingText = activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
-            
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemIds.length > 0 && !isEditingText) {
+            const isEditing = document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable;
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemIds.length > 0 && !isEditing) {
                 e.preventDefault();
-                const itemType = items[selectedItemIds[0]]?.type || 'item';
-                const deleteMessage = `Delete ${selectedItemIds.length} selected ${itemType}(s)?`;
-                if (confirm(deleteMessage)) {
-                    // Create a copy of the array to iterate over, as deleteItem modifies the original
+                if (confirm(`Delete ${selectedItemIds.length} selected item(s)?`)) {
                     [...selectedItemIds].forEach(id => deleteItem(id));
                 }
             }
         });
         document.addEventListener('click', (e) => {
-             if (!contextMenu.contains(e.target)) { hideContextMenu(); }
+             if (!contextMenu.contains(e.target)) hideContextMenu();
         }, true);
     }
 
-    function setupPasteListener() {
-        document.addEventListener('paste', (event) => {
-            const activeElement = document.activeElement;
-            const isEditingText = activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
-            if (isEditingText) return;
-            const clipboardData = event.clipboardData || window.clipboardData; if (!clipboardData) return;
-            const imageItem = Array.from(clipboardData.items).find(item => item.kind === 'file' && item.type.startsWith('image/'));
-            if (imageItem) {
-                event.preventDefault(); const imageFile = imageItem.getAsFile(); const reader = new FileReader();
-                reader.onload = (e) => { createAndAddItem('data', currentPasteCoords, { dataType: 'image', content: e.target.result }); };
-                reader.readAsDataURL(imageFile); return;
-            }
-            const textItem = Array.from(clipboardData.items).find(item => item.type === 'text/plain');
-            if (textItem) {
-                event.preventDefault();
-                textItem.getAsString((text) => { if (text && text.trim().length > 0) { createAndAddItem('data', currentPasteCoords, { dataType: 'text', content: text }); } });
-            }
-        });
-     }
-
     function setupContextMenuListeners() {
-        document.getElementById('add-general-task').addEventListener('click', (e) => {
-            e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('task', coords); hideContextMenu();
-        });
-        document.getElementById('add-estimator').addEventListener('click', (e) => {
-            e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('estimator', coords); hideContextMenu();
-        });
         document.getElementById('add-scribble-pad').addEventListener('click', (e) => {
-            e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('scribble', coords); hideContextMenu();
+            e.stopPropagation();
+            const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY };
+            createAndAddItem('scribble', coords);
+            hideContextMenu();
         });
-        // NEW: Group selection listener
         document.getElementById('group-selection').addEventListener('click', (e) => {
             e.stopPropagation();
-            if (selectedItemIds.length > 1) {
-                createGroupFromSelection();
-            }
+            if (selectedItemIds.length > 1) createGroupFromSelection();
             hideContextMenu();
         });
     }
 
-    // --- NEW: Topbar Listeners for Save/Load ---
     function setupTopbarListeners() {
         document.getElementById('save-btn').addEventListener('click', handleSave);
         document.getElementById('load-btn').addEventListener('click', () => fileLoader.click());
         fileLoader.addEventListener('change', handleLoad);
     }
 
-    // --- Context Menu Logic ---
     function showContextMenu(e) {
-        // NEW: Logic to enable/disable "Group Selection" option
-        const groupOption = document.getElementById('group-selection');
-        if (selectedItemIds.length > 1) {
-            groupOption.classList.remove('disabled');
-        } else {
-            groupOption.classList.add('disabled');
-        }
-
         const { clientX, clientY, pageX, pageY } = e;
-        const menuWidth = contextMenu.offsetWidth || 150; const menuHeight = contextMenu.offsetHeight || 100;
-        const bodyWidth = document.documentElement.clientWidth; const bodyHeight = document.documentElement.clientHeight;
-        const adjustedX = (clientX + menuWidth > bodyWidth) ? (bodyWidth - menuWidth - 5) : clientX;
-        const adjustedY = (clientY + menuHeight > bodyHeight) ? (bodyHeight - menuHeight - 5) : clientY;
-        contextMenu.style.left = `${adjustedX}px`; contextMenu.style.top = `${adjustedY}px`;
-        contextMenu.style.display = 'block'; contextMenu.dataset.pageX = pageX; contextMenu.dataset.pageY = pageY;
-        hideTypeChangeMenu();
+        contextMenu.style.left = `${clientX}px`;
+        contextMenu.style.top = `${clientY}px`;
+        contextMenu.style.display = 'block';
+        contextMenu.dataset.pageX = pageX;
+        contextMenu.dataset.pageY = pageY;
     }
+
     function hideContextMenu() { contextMenu.style.display = 'none'; }
 
     // --- Item Management ---
     function createAndAddItem(type, coords, presetData = null) {
         const newItemId = `item-${nextItemId++}`;
-        let element, itemData = {}, template;
-
-        const templates = {
-            task: taskTemplate,
-            estimator: estimatorTemplate,
-            data: dataTemplate,
-            scribble: scribbleTemplate,
-            group: groupTemplate // NEW
-        };
-        template = templates[type];
-        if (!template) return null;
-
-        if (type === 'estimator') {
-            const existingEstimator = Object.values(items).find(item => item.type === 'estimator');
-            if (existingEstimator) { alert(`Only one Estimator tile allowed.`); selectItem(existingEstimator.id); bringToFront(existingEstimator.id); return null; }
-        }
-
+        const template = type === 'group' ? groupTemplate : scribbleTemplate;
         const node = template.content.cloneNode(true);
-        element = node.querySelector('.tile');
+        const element = node.querySelector('.tile');
         element.id = newItemId;
 
-        const spawnX = parseInt(coords?.pageX || coords?.x || currentPasteCoords.x);
-        const spawnY = parseInt(coords?.pageY || coords?.y || currentPasteCoords.y);
+        const spawnX = parseInt(coords?.pageX || coords?.x || currentPasteCoords.x, 10);
+        const spawnY = parseInt(coords?.pageY || coords?.y || currentPasteCoords.y, 10);
         element.style.left = `${spawnX}px`;
         element.style.top = `${spawnY}px`;
         
-        const titleH3 = element.querySelector('.tile-title');
-
-        if (type === 'task') {
-             const complexitySelect = element.querySelector('.complexity'); fibonacciNumbers.forEach(num => { const option = document.createElement('option'); option.value = num; option.text = num; complexitySelect.appendChild(option); }); const descriptionP = element.querySelector('.description');
-             if (presetData) { titleH3.textContent = presetData.title || 'Preset Task'; if (presetData.description) { descriptionP.textContent = presetData.description; descriptionP.style.display = 'block'; } else { descriptionP.style.display = 'none'; } complexitySelect.value = presetData.complexity !== undefined ? presetData.complexity : 3; element.querySelector('.risk').value = presetData.risk !== undefined ? presetData.risk : 0.1; element.querySelector('.priority').value = presetData.priority !== undefined ? presetData.priority : 3; element.querySelector('.duration').value = presetData.duration !== undefined ? presetData.duration : 1; }
-             else { titleH3.textContent = 'General Task'; descriptionP.style.display = 'none'; complexitySelect.value = 3; }
-             itemData = { title: titleH3.textContent, description: descriptionP.textContent, complexity: complexitySelect.value, risk: element.querySelector('.risk').value, priority: element.querySelector('.priority').value, duration: element.querySelector('.duration').value };
-        } else if (type === 'estimator') {
-             titleH3.textContent = 'Project Estimator';
-             itemData = { title: titleH3.textContent, teamMembers: element.querySelector('#team-members').value, workingHours: element.querySelector('#working-hours').value, overhead: element.querySelector('#overhead').value, productivity: element.querySelector('#productivity').value, learningCurve: element.querySelector('#learning-curve').value, hoursPerStoryPoint: element.querySelector('#hours-per-story-point').value };
-        } else if (type === 'data') {
-             const imgEl = element.querySelector('.data-image'); const textEl = element.querySelector('.data-text'); itemData.dataType = presetData?.dataType || 'text'; itemData.content = presetData?.content || '';
-             if (itemData.dataType === 'image') { imgEl.src = itemData.content; imgEl.style.display = 'block'; textEl.style.display = 'none'; titleH3.textContent = presetData?.title || 'Pasted Image'; }
-             else { textEl.value = itemData.content; imgEl.style.display = 'none'; textEl.style.display = 'block'; titleH3.textContent = presetData?.title || 'Pasted Text'; }
-             itemData.title = titleH3.textContent;
-        } else if (type === 'scribble') {
-             titleH3.textContent = presetData?.title || 'Scribble Pad'; const textEl = element.querySelector('.scribble-text'); textEl.value = presetData?.content || '';
-             itemData = { title: titleH3.textContent, content: textEl.value };
-        } else if (type === 'group') {
-             // NEW: Group creation logic
-             titleH3.textContent = presetData?.title || 'New Group';
-             itemData = {
-                 title: titleH3.textContent,
-                 children: presetData?.children || [], // Store child IDs
-                 isExpanded: false
-             };
+        const itemData = { title: presetData?.title || (type === 'group' ? 'New Group' : 'Scribble Pad') };
+        if (type === 'scribble') itemData.content = presetData?.content || '';
+        if (type === 'group') {
+            itemData.children = presetData?.children || [];
+            itemData.isExpanded = false;
         }
+
+        element.querySelector('.tile-title').textContent = itemData.title;
 
         element.style.width = `${presetData?.width || DEFAULT_TILE_WIDTH}px`;
         element.style.height = `${presetData?.height || DEFAULT_TILE_HEIGHT}px`;
 
         canvas.appendChild(element);
         items[newItemId] = {
-            id: newItemId,
-            type: type,
-            x: spawnX, y: spawnY,
+            id: newItemId, type, x: spawnX, y: spawnY,
             width: parseInt(element.style.width),
             height: parseInt(element.style.height),
-            data: itemData,
-            element: element,
-            parentId: presetData?.parentId || null // NEW: For grouping
+            data: itemData, element,
+            parentId: presetData?.parentId || null
         };
 
         setupTileInteraction(element);
-        calculate();
-        selectItem(newItemId, true); // Select the new item, keep existing selections
-        saveState();
+        if (!presetData) {
+            deselectAllItems();
+            selectItem(newItemId);
+            saveState();
+        }
         return newItemId;
     }
 
@@ -694,48 +453,33 @@
         if (!items[itemId]) return;
         const itemToDelete = items[itemId];
 
-        // NEW: If deleting a group, ungroup children first
-        if (itemToDelete.type === 'group' && itemToDelete.data.children.length > 0) {
-            // Move children out of the group before deleting the group
+        if (itemToDelete.type === 'group') {
             itemToDelete.data.children.forEach(childId => {
                 if(items[childId]) {
                     items[childId].parentId = null;
-                    // Make children visible again if they were hidden
                     items[childId].element.classList.remove('hidden-child');
                 }
             });
         }
         
-        const itemElement = itemToDelete.element;
         links = links.filter(link => {
-            if (link.sourceId === itemId || link.targetId === itemId) {
-                const arrowElement = document.getElementById(`link-${link.id}`);
-                if (arrowElement) arrowElement.remove();
-                return false;
-            }
+            if (link.sourceId === itemId || link.targetId === itemId) return false;
             return true;
         });
 
-        if (itemElement) itemElement.remove();
+        itemToDelete.element.remove();
         delete items[itemId];
         
-        // Remove from selection
-        const selectionIndex = selectedItemIds.indexOf(itemId);
-        if (selectionIndex > -1) {
-            selectedItemIds.splice(selectionIndex, 1);
-        }
+        selectedItemIds = selectedItemIds.filter(id => id !== itemId);
         
         updateArrows();
-        calculate();
         saveState();
     }
     
-    // --- Tile Interaction (MODIFIED FOR MULTI-SELECT AND GROUPS) ---
     function setupTileInteraction(tileElement) {
         const itemId = tileElement.id;
         const headerElement = tileElement.querySelector('.tile-header');
         
-        // --- Dragging ---
         interact(tileElement).draggable({
             allowFrom: headerElement,
             listeners: {
@@ -744,15 +488,11 @@
                         selectItem(itemId, event.shiftKey);
                     }
                     bringToFront(itemId);
-                    event.target.classList.add('dragging');
-                    if (headerElement) headerElement.style.cursor = 'grabbing';
                 },
                 move(event) {
                     const movedItems = new Set();
                     selectedItemIds.forEach(selectedId => {
-                        // If the item has already been moved as part of a group, skip it
                         if (movedItems.has(selectedId)) return;
-
                         const targetItem = items[selectedId];
                         if (!targetItem) return;
 
@@ -765,12 +505,10 @@
                         targetItem.element.style.top = `${targetItem.y}px`;
                         movedItems.add(selectedId);
 
-
-                        // If dragging a group (expanded or not), move its children too
-                        if (targetItem.type === 'group' && targetItem.data.children.length > 0) {
+                        if (targetItem.type === 'group') {
                             targetItem.data.children.forEach(childId => {
                                 const childItem = items[childId];
-                                if(childItem && !selectedItemIds.includes(childId)) { // Move child only if not part of the multi-selection drag
+                                if(childItem && !selectedItemIds.includes(childId)) {
                                     childItem.x += dx;
                                     childItem.y += dy;
                                     childItem.element.style.left = `${childItem.x}px`;
@@ -782,191 +520,110 @@
                     });
                     updateArrows();
                 },
-                end(event) {
-                    event.target.classList.remove('dragging');
-                    if (headerElement) headerElement.style.cursor = 'grab';
-                    saveState();
-                }
+                end: () => saveState()
             }
         });
 
-        // --- Resizing ---
         interact(tileElement).resizable({
-             edges: { left: false, right: true, bottom: true, top: false }, allowFrom: '.resizer',
+             edges: { right: true, bottom: true }, allowFrom: '.resizer',
              listeners: {
-                 start(event) { selectItem(itemId, event.shiftKey); bringToFront(itemId); event.target.classList.add('resizing'); },
-                 move: function (event) {
-                     if (!items[itemId]) return; let target = event.target; let newWidth = Math.max(200, event.rect.width); let newHeight = Math.max(100, event.rect.height);
-                     target.style.width = `${newWidth}px`; target.style.height = `${newHeight}px`; items[itemId].width = newWidth; items[itemId].height = newHeight;
-                     const canvasRect = canvas.getBoundingClientRect(); items[itemId].x = Math.min(items[itemId].x, canvasRect.width - newWidth); items[itemId].y = Math.min(items[itemId].y, canvasRect.height - newHeight);
-                     target.style.left = `${items[itemId].x}px`; target.style.top = `${items[itemId].y}px`; updateArrows();
+                 move: (event) => {
+                     const item = items[itemId];
+                     if (!item) return;
+                     item.width = event.rect.width;
+                     item.height = event.rect.height;
+                     event.target.style.width = `${item.width}px`;
+                     event.target.style.height = `${item.height}px`;
+                     updateArrows();
                  },
-                 end: function (event) { event.target.classList.remove('resizing'); if (items[itemId]) { items[itemId].width = parseInt(event.target.style.width); items[itemId].height = parseInt(event.target.style.height); saveState(); } }
+                 end: () => saveState()
              },
-             modifiers: [interact.modifiers.restrictSize({ min: { width: 200, height: 100 } }), interact.modifiers.restrictEdges({ outer: 'parent' })], inertia: false
+             modifiers: [interact.modifiers.restrictSize({ min: { width: 200, height: 100 } })]
         });
 
-        // --- Tile Click (Selection) ---
         tileElement.addEventListener('click', (e) => {
-            // Prevent selection when interacting with form elements
-            const isInteractive = e.target.matches('input, select, textarea, label, button, .delete-btn, .change-type-btn') || e.target.isContentEditable;
-            if (isInteractive) return;
-
-            // Prevent selection when clicking resizer
-            if (e.target.closest('.resizer')) return;
-
+            if (e.target.closest('.resizer') || e.target.closest('.delete-btn') || e.target.tagName === 'TEXTAREA') return;
             selectItem(itemId, e.shiftKey);
-            hideContextMenu(); hideTypeChangeMenu(); e.stopPropagation();
+            e.stopPropagation();
         });
 
-        // --- Double Click to Expand/Collapse Group ---
         tileElement.addEventListener('dblclick', (e) => {
             e.stopPropagation();
-            if (items[itemId]?.type === 'group') {
-                toggleGroupExpansion(itemId);
-            }
+            if (items[itemId]?.type === 'group') toggleGroupExpansion(itemId);
+            else if (e.target.classList.contains('tile-title')) makeTitleEditable(e.target, itemId);
         });
 
-        // Delete button
-        const deleteBtn = tileElement.querySelector('.delete-btn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); e.preventDefault();
-                // Ensure the item is selected before deleting
-                if (!selectedItemIds.includes(itemId)) {
-                    selectItem(itemId);
-                }
-                const deleteMessage = `Delete ${selectedItemIds.length} selected item(s)?`;
-                if (confirm(deleteMessage)) {
-                    [...selectedItemIds].forEach(id => deleteItem(id));
-                }
-            });
-        }
-        
-        // Other listeners (rename, etc.)
-        const titleElement = tileElement.querySelector('.tile-title');
-        if (titleElement) {
-            titleElement.addEventListener('dblclick', (e) => {
-                if (items[itemId]?.type === 'group') return; // Prevent rename on group dblclick
-                e.stopPropagation(); titleElement.setAttribute('contenteditable', 'true'); titleElement.focus();
-                // Select text logic
-                const range = document.createRange(); range.selectNodeContents(titleElement);
-                const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-                // Save logic
-                const saveRename = () => {
-                    titleElement.setAttribute('contenteditable', 'false');
-                    titleElement.removeEventListener('blur', saveRename);
-                    titleElement.removeEventListener('keydown', handleKey);
-                    if (items[itemId]) {
-                        const newTitle = titleElement.textContent.trim();
-                        if (newTitle) { items[itemId].data.title = newTitle; saveState(); calculate(); }
-                        else { titleElement.textContent = items[itemId].data.title || 'Untitled'; }
-                    }
-                };
-                const handleKey = (keyEvent) => {
-                    if (keyEvent.key === 'Enter') { keyEvent.preventDefault(); saveRename(); }
-                    else if (keyEvent.key === 'Escape') { titleElement.textContent = items[itemId]?.data?.title || 'Untitled'; saveRename(); }
-                    keyEvent.stopPropagation();
-                };
-                titleElement.addEventListener('blur', saveRename);
-                titleElement.addEventListener('keydown', handleKey);
-            });
-        }
+        tileElement.querySelector('.delete-btn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete this item?`)) deleteItem(itemId);
+        });
 
+        tileElement.querySelector('.scribble-text')?.addEventListener('change', (e) => {
+            items[itemId].data.content = e.target.value;
+            saveState();
+        });
     }
 
-    function bringToFront(itemId) {
-        if (!items[itemId] || !items[itemId].element) return;
-        const element = items[itemId].element;
-        let maxZ = 10; // Start z-index
-        Object.values(items).forEach(item => {
-            if (item.element && item.id !== itemId) {
-                const z = parseInt(window.getComputedStyle(item.element).zIndex || '10');
-                if (!isNaN(z) && z >= maxZ) {
-                    maxZ = z + 1;
-                }
+    function makeTitleEditable(titleElement, itemId) {
+        titleElement.setAttribute('contenteditable', 'true');
+        titleElement.focus();
+        document.execCommand('selectAll', false, null);
+        const onBlur = () => {
+            titleElement.setAttribute('contenteditable', 'false');
+            items[itemId].data.title = titleElement.textContent;
+            saveState();
+            titleElement.removeEventListener('blur', onBlur);
+            titleElement.removeEventListener('keydown', onKeydown);
+        };
+        const onKeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                titleElement.blur();
             }
-        });
-        element.style.zIndex = maxZ;
+        };
+        titleElement.addEventListener('blur', onBlur);
+        titleElement.addEventListener('keydown', onKeydown);
     }
     
-    function updateItemData(itemId) {
-        if (!items[itemId]) return; const item = items[itemId]; const element = item.element; if (!element) return;
-        try {
-            if (item.type === 'task') {
-                item.data.description = element.querySelector('.description')?.textContent || '';
-                item.data.complexity = element.querySelector('.complexity')?.value;
-                item.data.risk = element.querySelector('.risk')?.value;
-                item.data.priority = element.querySelector('.priority')?.value;
-                item.data.duration = element.querySelector('.duration')?.value;
-            } else if (item.type === 'estimator') {
-                item.data.teamMembers = element.querySelector('#team-members')?.value;
-                item.data.workingHours = element.querySelector('#working-hours')?.value;
-                item.data.overhead = element.querySelector('#overhead')?.value;
-                item.data.productivity = element.querySelector('#productivity')?.value;
-                item.data.learningCurve = element.querySelector('#learning-curve')?.value;
-                item.data.hoursPerStoryPoint = element.querySelector('#hours-per-story-point')?.value;
-            } else if (item.type === 'data') {
-                if(item.data.dataType === 'text') { item.data.content = element.querySelector('.data-text')?.value || ''; }
-            } else if (item.type === 'scribble') {
-                item.data.content = element.querySelector('.scribble-text')?.value || '';
-            }
-        } catch (error) { console.error("Error updating item data for", itemId, error); }
+    function bringToFront(itemId) {
+        const element = items[itemId]?.element;
+        if (!element) return;
+        const maxZ = Math.max(10, ...Object.values(items).map(i => parseInt(i.element.style.zIndex || '10', 10)));
+        element.style.zIndex = maxZ + 1;
     }
 
-    // MODIFIED: Selection Logic for Multi-Select
     function selectItem(itemId, isMultiSelect = false) {
-        if (!isMultiSelect) {
-            deselectAllItems();
-        }
+        if (!isMultiSelect) deselectAllItems();
 
         const index = selectedItemIds.indexOf(itemId);
+        const element = items[itemId]?.element;
+        if (!element) return;
+
         if (index > -1) {
-            // Already selected. If multi-selecting, deselect it.
             if (isMultiSelect) {
-                items[itemId]?.element.classList.remove('selected');
+                element.classList.remove('selected');
                 selectedItemIds.splice(index, 1);
             }
         } else {
-            // Not selected. Add to selection.
-            if (items[itemId]?.element) {
-                items[itemId].element.classList.add('selected');
-                selectedItemIds.push(itemId);
-                bringToFront(itemId);
-            }
+            element.classList.add('selected');
+            selectedItemIds.push(itemId);
+            bringToFront(itemId);
         }
     }
 
     function deselectAllItems() {
-        selectedItemIds.forEach(id => {
-            items[id]?.element?.classList.remove('selected');
-        });
+        selectedItemIds.forEach(id => items[id]?.element.classList.remove('selected'));
         selectedItemIds = [];
     }
     
-    // --- NEW: Grouping Logic ---
     function createGroupFromSelection() {
-        if (selectedItemIds.length <= 1) return;
-
-        let minX = Infinity, minY = Infinity;
-        
-        // Use the coordinates of the top-left-most item for the new group
-        selectedItemIds.forEach(id => {
-            const item = items[id];
-            if (item) {
-                minX = Math.min(minX, item.x);
-                minY = Math.min(minY, item.y);
-            }
-        });
-
         const groupPreset = {
             title: "New Group",
             children: [...selectedItemIds],
         };
 
-        const groupId = createAndAddItem('group', { pageX: minX - 50, pageY: minY - 50 }, groupPreset);
+        const groupId = createAndAddItem('group', { pageX: items[selectedItemIds[0]].x - 50, pageY: items[selectedItemIds[0]].y - 50 }, groupPreset);
 
-        // Assign parentId to children and hide them
         selectedItemIds.forEach(childId => {
             if (items[childId]) {
                 items[childId].parentId = groupId;
@@ -982,16 +639,13 @@
 
     function toggleGroupExpansion(groupId) {
         const group = items[groupId];
-        if (!group || group.type !== 'group') return;
+        if (!group) return;
 
         group.data.isExpanded = !group.data.isExpanded;
         const groupElement = group.element;
+        groupElement.classList.toggle('expanded', group.data.isExpanded);
 
         if (group.data.isExpanded) {
-            // EXPAND
-            groupElement.classList.add('expanded');
-            
-            // Calculate bounding box of children to resize group container
             let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
             let hasChildren = false;
             group.data.children.forEach(childId => {
@@ -1011,25 +665,13 @@
                 group.height = maxY - minY + 80;
                 group.x = minX - 40;
                 group.y = minY - 40;
-            } else {
-                // Default size if group is empty
-                group.width = 400;
-                group.height = 300;
             }
-
-
             groupElement.style.width = `${group.width}px`;
             groupElement.style.height = `${group.height}px`;
             groupElement.style.left = `${group.x}px`;
             groupElement.style.top = `${group.y}px`;
-
         } else {
-            // COLLAPSE
-            groupElement.classList.remove('expanded');
-            group.data.children.forEach(childId => {
-                items[childId]?.element.classList.add('hidden-child');
-            });
-            // Restore to a default size
+            group.data.children.forEach(childId => items[childId]?.element.classList.add('hidden-child'));
             group.width = DEFAULT_TILE_WIDTH;
             group.height = DEFAULT_TILE_HEIGHT;
             groupElement.style.width = `${group.width}px`;
@@ -1040,352 +682,128 @@
         saveState();
     }
 
-
-    // --- Type Change Logic (omitted for brevity, unchanged) ---
-
-    // --- Arrow Drawing (MODIFIED FOR GROUPS) ---
     function updateArrows() {
         svgLayer.innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,3.5 L0,7 Z" fill="#5a5a5a" /></marker></defs>`;
         const canvasRect = canvas.getBoundingClientRect();
-
         links.forEach(link => {
             let sourceItem = items[link.sourceId];
             let targetItem = items[link.targetId];
             if (!sourceItem || !targetItem) return;
 
-            // NEW: Remap to parent group if child is in a collapsed group
-            if (sourceItem.parentId && !items[sourceItem.parentId]?.data.isExpanded) {
-                sourceItem = items[sourceItem.parentId];
-            }
-            if (targetItem.parentId && !items[targetItem.parentId]?.data.isExpanded) {
-                targetItem = items[targetItem.parentId];
-            }
-
-            // If a link is purely internal to a collapsed group, or links to/from the same group, don't draw it
+            if (sourceItem.parentId && !items[sourceItem.parentId]?.data.isExpanded) sourceItem = items[sourceItem.parentId];
+            if (targetItem.parentId && !items[targetItem.parentId]?.data.isExpanded) targetItem = items[targetItem.parentId];
             if (sourceItem === targetItem) return;
 
-            if (!sourceItem.element || !targetItem.element) return;
-            
-            const sourceRect = sourceItem.element.getBoundingClientRect();
-            const targetRect = targetItem.element.getBoundingClientRect();
-            
             const sourceCenter = getElementCenter(sourceItem.element, canvasRect);
             const targetCenter = getElementCenter(targetItem.element, canvasRect);
-            const dx = targetCenter.x - sourceCenter.x;
-            const dy = targetCenter.y - sourceCenter.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
+            const dx = targetCenter.x - sourceCenter.x, dy = targetCenter.y - sourceCenter.y;
+            const len = Math.sqrt(dx*dx + dy*dy);
             if (len < 1) return;
-            const startPoint = getEdgePoint(sourceRect, dx, dy, canvasRect);
-            const endPoint = getEdgePoint(targetRect, -dx, -dy, canvasRect);
-            
-            // Adjust end point for marker
-            const nx = dx / len; const ny = dy / len;
-            const offset = MARKER_WIDTH * 1.5;
-            const lineEndX = endPoint.x - nx * offset;
-            const lineEndY = endPoint.y - ny * offset;
 
-            const pathData = `M ${startPoint.x},${startPoint.y} L ${lineEndX},${lineEndY}`;
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', pathData);
+            const startPoint = getEdgePoint(sourceItem.element.getBoundingClientRect(), dx, dy, canvasRect);
+            const endPoint = getEdgePoint(targetItem.element.getBoundingClientRect(), -dx, -dy, canvasRect);
+            
+            const nx = dx / len, ny = dy / len;
+            const lineEndX = endPoint.x - nx * 15, lineEndY = endPoint.y - ny * 15;
+
+            const path = document.createElementNS('[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)', 'path');
+            path.setAttribute('d', `M ${startPoint.x},${startPoint.y} L ${lineEndX},${lineEndY}`);
             path.setAttribute('class', 'arrow');
-            path.setAttribute('id', `link-${link.id}`);
             svgLayer.appendChild(path);
         });
     }
 
     function getElementCenter(element, canvasRect) {
-        if (!element) return { x: 0, y: 0 };
         const rect = element.getBoundingClientRect();
-        return {
-            x: rect.left - canvasRect.left + rect.width / 2,
-            y: rect.top - canvasRect.top + rect.height / 2
-        };
+        return { x: rect.left - canvasRect.left + rect.width / 2, y: rect.top - canvasRect.top + rect.height / 2 };
     }
 
     function getEdgePoint(rect, dx, dy, canvasRect) {
-        const cx = rect.left - canvasRect.left + rect.width / 2;
-        const cy = rect.top - canvasRect.top + rect.height / 2;
-        const w = rect.width / 2;
-        const h = rect.height / 2;
-
-        const absDx = Math.abs(dx);
-        const absDy = Math.abs(dy);
-
-        if (absDx === 0 && absDy === 0) return { x: cx, y: cy };
-
-        let t = Math.max(0, Math.min(1, 0.5 * (1 + dx/absDx), 0.5 * (1 + dy/absDy)));
-        
-        let ix, iy;
-        if (absDx * h > absDy * w) { // intersect with vertical edges
-            const sign = dx > 0 ? 1 : -1;
-            ix = cx + sign * w;
-            iy = cy + dy * w / absDx;
-        } else { // intersect with horizontal edges
-            const sign = dy > 0 ? 1 : -1;
-            iy = cy + sign * h;
-            ix = cx + dx * h / absDy;
-        }
-        return { x: ix, y: iy };
+        const cx = rect.left - canvasRect.left + rect.width / 2, cy = rect.top - canvasRect.top + rect.height / 2;
+        const w = rect.width / 2, h = rect.height / 2;
+        if (dx === 0 && dy === 0) return {x: cx, y: cy};
+        const slope = dy / dx;
+        if (Math.abs(slope) * w < h) return { x: cx + (dx > 0 ? w : -w), y: cy + slope * (dx > 0 ? w : -w) };
+        return { x: cx + (dy > 0 ? h / slope : -h / slope), y: cy + (dy > 0 ? h : -h) };
     }
 
-    // --- Calculation ---
-    function calculate() {
-        const estimatorItem = Object.values(items).find(item => item.type === 'estimator');
-        if (estimatorItem) { updateItemData(estimatorItem.id); }
-        else { updateEstimatorDisplay(null); return; }
-
-        let totalAdjustedStoryPoints = 0;
-        let totalBaseStoryPoints = 0;
-        let validTaskCount = 0;
-
-        Object.values(items).filter(item => item.type === 'task').forEach(taskItem => {
-            const data = taskItem.data;
-            const complexity = parseFloat(data.complexity);
-            const risk = parseFloat(data.risk);
-            const duration = parseFloat(data.duration);
-
-            if (isNaN(complexity) || isNaN(risk) || isNaN(duration) || complexity <= 0 || risk < 0 || risk > 1 || duration <= 0) return;
-            validTaskCount++;
-            const riskAdjustment = risk;
-            const durationUncertainty = 0.1 * Math.log(1 + Math.max(0, duration));
-            const Fi = (1 + riskAdjustment) * (1 + durationUncertainty);
-            const adjustedStoryPoints = complexity * Fi;
-            totalBaseStoryPoints += complexity;
-            const baseTestFactor = 0.15;
-            const riskTestFactor = 0.20;
-            const testingEffort = adjustedStoryPoints * (baseTestFactor + riskTestFactor * risk);
-            const taskTotalPoints = adjustedStoryPoints + testingEffort;
-            totalAdjustedStoryPoints += taskTotalPoints;
-        });
-
-        const R = parseInt(estimatorItem.data.teamMembers || 0);
-        const D = parseFloat(estimatorItem.data.workingHours || 0);
-        const O = parseFloat(estimatorItem.data.overhead || 0);
-        const P = parseFloat(estimatorItem.data.productivity || 0);
-        const L = parseFloat(estimatorItem.data.learningCurve || 0);
-        const H = parseFloat(estimatorItem.data.hoursPerStoryPoint || 0);
-        const efficiencyFactor = (O >= 0 && O < 1) ? 1 - O : 0;
-        const effectiveHoursPerDay = R * D * efficiencyFactor * P * L;
-        let teamVelocity = 0;
-        let durationText = "N/A";
-
-        if (H > 0 && effectiveHoursPerDay > 0) {
-            teamVelocity = effectiveHoursPerDay / H;
-        }
-        if (totalAdjustedStoryPoints > 0 && teamVelocity > 0) {
-            const totalDuration = totalAdjustedStoryPoints / teamVelocity;
-            durationText = totalDuration.toFixed(1);
-        } else if (validTaskCount === 0 && Object.values(items).some(item => item.type === 'task')) {
-            durationText = "No Valid Tasks";
-        } else if (validTaskCount > 0 && totalAdjustedStoryPoints <= 0) {
-            durationText = "Check Task Inputs";
-        } else if (totalAdjustedStoryPoints > 0 && teamVelocity <= 0) {
-            durationText = "Check Team Factors";
-        }
-        updateEstimatorDisplay({ baseSP: totalBaseStoryPoints, adjSP: totalAdjustedStoryPoints, velocity: teamVelocity, duration: durationText }, estimatorItem.element);
-    }
-
-    function updateEstimatorDisplay(results, estimatorElement = null) {
-        if (!estimatorElement) {
-            const estimatorItem = Object.values(items).find(item => item.type === 'estimator');
-            estimatorElement = estimatorItem?.element;
-        }
-        if (!estimatorElement) return;
-        estimatorElement.querySelector('#result-base-sp').textContent = results ? results.baseSP.toFixed(2) : "0";
-        estimatorElement.querySelector('#result-adj-sp').textContent = results ? results.adjSP.toFixed(2) : "0";
-        estimatorElement.querySelector('#result-velocity').textContent = (results && results.velocity > 0) ? results.velocity.toFixed(2) : "N/A";
-        estimatorElement.querySelector('#result-duration').textContent = results ? results.duration : "N/A";
-    }
-
-    // --- Persistence (MODIFIED for Save/Load files) ---
+    // --- Persistence ---
     function saveState() {
-        // This still saves to localStorage for auto-saving sessions
-        try {
-            const state = getSerializableState();
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error("Error saving state to localStorage:", error);
-        }
+        localStorage.setItem('canvasAppState_v5', JSON.stringify(getSerializableState()));
     }
 
     function getSerializableState() {
-        const serializableItems = {};
-        for (const id in items) {
-            const item = items[id];
-            serializableItems[id] = {
-                id: item.id, type: item.type,
-                x: item.x, y: item.y, width: item.width, height: item.height,
-                data: item.data,
-                parentId: item.parentId // NEW: Save parent relationship
-            };
-        }
-        return { items: serializableItems, links: links, nextItemId: nextItemId, nextLinkId: nextLinkId };
+        return {
+            items: Object.fromEntries(Object.entries(items).map(([id, item]) => [id, {
+                id, type: item.type, x: item.x, y: item.y, width: item.width, height: item.height,
+                data: item.data, parentId: item.parentId
+            }])),
+            links, nextItemId, nextLinkId
+        };
     }
 
     function handleSave() {
-        try {
-            const state = getSerializableState();
-            const stateString = JSON.stringify(state, null, 2); // Pretty print JSON
-            const blob = new Blob([stateString], { type: 'application/json' });
-            
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'dashboard-workflow.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-        } catch (error) {
-            console.error("Error saving workflow to file:", error);
-            alert("Could not save workflow to file.");
-        }
+        const stateString = JSON.stringify(getSerializableState(), null, 2);
+        const blob = new Blob([stateString], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'dashboard-workflow.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
     }
 
     function handleLoad(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
-            const content = e.target.result;
+            let content = e.target.result;
+            
+            // **FIX**: Clean the file content before parsing
+            const cleanedContent = content
+                .replace(/\\r?\n?/g, '') // Removes tags and potential newlines
+                .replace(/^```json\s*/, '')             // Removes opening ```json tag
+                .replace(/\s*```$/, '');                // Removes closing ``` tag
+
             try {
-                const state = JSON.parse(content);
+                const state = JSON.parse(cleanedContent);
                 loadStateFromObject(state);
             } catch (error) {
-                console.error("Error parsing or loading workflow file:", error);
+                console.error("Error parsing cleaned workflow file:", error);
                 alert("Invalid workflow file. Could not load.");
             }
         };
-        reader.onerror = () => {
-             console.error("Error reading file:", reader.error);
-             alert("Error reading file.");
-        };
         reader.readAsText(file);
-
-        // Reset the file input so the 'change' event fires again for the same file
         event.target.value = '';
     }
     
     function loadState() {
-        // Loads from localStorage
-        const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedState) {
-            try {
-                const state = JSON.parse(savedState);
-                loadStateFromObject(state);
-            } catch (error) {
-                console.error("Error loading state from localStorage:", error);
-            }
-        }
+        const savedState = localStorage.getItem('canvasAppState_v5');
+        if (savedState) loadStateFromObject(JSON.parse(savedState));
     }
 
     function loadStateFromObject(state) {
-        // --- Clear current canvas ---
         canvas.querySelectorAll('.tile').forEach(tile => tile.remove());
-        svgLayer.innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,3.5 L0,7 Z" fill="#5a5a5a" /></marker></defs>`;
         items = {};
         links = [];
         selectedItemIds = [];
 
-        // --- Load from state object ---
-        if (!state.items || typeof state.items !== 'object') {
-            console.error("Invalid state object structure.");
-            return;
-        }
-
+        if (!state.items) return;
         nextItemId = state.nextItemId || 1;
         nextLinkId = state.nextLinkId || 1;
         
-        // Load items
-        for (const id in state.items) {
-            const savedItem = state.items[id];
-            const element = recreateElementFromSave(savedItem);
-            if (element) {
-                canvas.appendChild(element);
-                items[id] = { ...savedItem, element: element };
-                setupTileInteraction(element);
-            }
-        }
+        Object.values(state.items).forEach(savedItem => createAndAddItem(savedItem.type, savedItem, savedItem));
 
-        // Second pass to handle group expansion and child visibility
-         for (const id in items) {
-             const item = items[id];
-             if (item.type === 'group' && item.data.isExpanded) {
-                item.element.classList.add('expanded');
-             }
-             if (item.parentId) {
-                 const parent = items[item.parentId];
-                 if(parent && !parent.data.isExpanded) {
-                     item.element.classList.add('hidden-child');
-                 }
-             }
-         }
+        Object.values(items).forEach(item => {
+             if (item.type === 'group' && item.data.isExpanded) toggleGroupExpansion(item.id);
+        });
 
         links = state.links || [];
-        
-        console.log(`State loaded. Next Item ID: ${nextItemId}, Next Link ID: ${nextLinkId}`);
         updateArrows();
-        calculate();
-        saveState(); // Save the newly loaded state to localStorage
+        saveState();
     }
 
-    function recreateElementFromSave(savedItem) {
-        let template;
-        const templates = { task: taskTemplate, estimator: estimatorTemplate, data: dataTemplate, scribble: scribbleTemplate, group: groupTemplate };
-        template = templates[savedItem.type];
-        if (!template) return null;
-        
-        try {
-            const node = template.content.cloneNode(true);
-            const element = node.querySelector('.tile');
-            element.id = savedItem.id;
-            element.style.left = `${savedItem.x}px`;
-            element.style.top = `${savedItem.y}px`;
-            const width = parseInt(savedItem.width || DEFAULT_TILE_WIDTH);
-            const height = parseInt(savedItem.height || DEFAULT_TILE_HEIGHT);
-            element.style.width = `${isNaN(width) ? DEFAULT_TILE_WIDTH : width}px`;
-            element.style.height = `${isNaN(height) ? DEFAULT_TILE_HEIGHT : height}px`;
-            
-            const data = savedItem.data || {};
-            const titleH3 = element.querySelector('.tile-title');
-            if (titleH3) titleH3.textContent = data.title || '';
-            
-            if (savedItem.type === 'task') {
-                const complexitySelect = element.querySelector('.complexity');
-                fibonacciNumbers.forEach(num => { const option = document.createElement('option'); option.value = num; option.text = num; complexitySelect.appendChild(option); });
-                complexitySelect.value = data.complexity || 3;
-                element.querySelector('.risk').value = data.risk !== undefined ? data.risk : 0.1;
-                element.querySelector('.priority').value = data.priority !== undefined ? data.priority : 3;
-                element.querySelector('.duration').value = data.duration !== undefined ? data.duration : 1;
-                const descriptionP = element.querySelector('.description');
-                if(data.description) { descriptionP.textContent = data.description; descriptionP.style.display = 'block'; }
-                else { descriptionP.style.display = 'none'; }
-            } else if (savedItem.type === 'estimator') {
-                element.querySelector('#team-members').value = data.teamMembers || 5;
-                element.querySelector('#working-hours').value = data.workingHours || 8;
-                element.querySelector('#overhead').value = data.overhead !== undefined ? data.overhead : 0.15;
-                element.querySelector('#productivity').value = data.productivity !== undefined ? data.productivity : 0.85;
-                element.querySelector('#learning-curve').value = data.learningCurve !== undefined ? data.learningCurve : 1.0;
-                element.querySelector('#hours-per-story-point').value = data.hoursPerStoryPoint || 4;
-            } else if (savedItem.type === 'data') {
-                const imgEl = element.querySelector('.data-image');
-                const textEl = element.querySelector('.data-text');
-                if (data.dataType === 'image') { imgEl.src = data.content || ''; imgEl.style.display = 'block'; textEl.style.display = 'none'; }
-                else { textEl.value = data.content || ''; imgEl.style.display = 'none'; textEl.style.display = 'block'; }
-            } else if (savedItem.type === 'scribble') {
-                const textEl = element.querySelector('.scribble-text');
-                if (textEl) textEl.value = data.content || '';
-            } else if (savedItem.type === 'group') {
-                const p = element.querySelector('.group-content p');
-                if (p && data.children) p.textContent = `Contains ${data.children.length} items. Double-click to expand.`;
-            }
-            return element;
-        } catch (error) { console.error(`Error recreating element for ${savedItem.id}:`, error, savedItem); return null; }
-    }
-
-    // --- Start the application ---
     initialize();
-
 </script>
 
 </body>
