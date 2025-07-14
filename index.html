@@ -456,7 +456,6 @@
         }
         
         .link-clickable {
-            /* THE FIX: Added fill: none to prevent black polygons */
             fill: none;
             stroke: transparent;
             stroke-width: 12;
@@ -981,9 +980,65 @@
             autoSave();
         }
 
-        /** FINAL FIX for LINK RENDERING **/
+        /** NEW: Helper to find the closest connection points between two nodes **/
+        function getClosestConnectionPoints(sourceItem, targetItem) {
+            const sourceNode = document.getElementById(sourceItem.id);
+            const targetNode = document.getElementById(targetItem.id);
+            if (!sourceNode || !targetNode) return null;
+
+            const isSourceCollapsed = sourceNode.classList.contains('group') && !sourceNode.classList.contains('expanded');
+            const isTargetCollapsed = targetNode.classList.contains('group') && !targetNode.classList.contains('expanded');
+
+            const s = {
+                x: sourceItem.x,
+                y: sourceItem.y,
+                w: isSourceCollapsed ? GROUP_COLLAPSED_WIDTH : sourceItem.width,
+                h: isSourceCollapsed ? GROUP_COLLAPSED_HEIGHT : sourceItem.height,
+            };
+
+            const t = {
+                x: targetItem.x,
+                y: targetItem.y,
+                w: isTargetCollapsed ? GROUP_COLLAPSED_WIDTH : targetItem.width,
+                h: isTargetCollapsed ? GROUP_COLLAPSED_HEIGHT : targetItem.height,
+            };
+
+            const sourcePoints = [
+                { side: 'top',    x: s.x + s.w / 2, y: s.y },
+                { side: 'bottom', x: s.x + s.w / 2, y: s.y + s.h },
+                { side: 'left',   x: s.x,           y: s.y + s.h / 2 },
+                { side: 'right',  x: s.x + s.w,     y: s.y + s.h / 2 },
+            ];
+
+            const targetPoints = [
+                { side: 'top',    x: t.x + t.w / 2, y: t.y },
+                { side: 'bottom', x: t.x + t.w / 2, y: t.y + t.h },
+                { side: 'left',   x: t.x,           y: t.y + t.h / 2 },
+                { side: 'right',  x: t.x + t.w,     y: t.y + t.h / 2 },
+            ];
+
+            let minDistance = Infinity;
+            let bestConnection = {};
+
+            for (const sp of sourcePoints) {
+                for (const tp of targetPoints) {
+                    const distance = Math.hypot(sp.x - tp.x, sp.y - tp.y);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        bestConnection = {
+                            startPoint: { x: sp.x, y: sp.y },
+                            endPoint: { x: tp.x, y: tp.y },
+                            fromSide: sp.side,
+                            toSide: tp.side,
+                        };
+                    }
+                }
+            }
+            return bestConnection;
+        }
+
+        /** UPGRADED: Link routing uses the closest points now **/
         function updateLinks() {
-            // A more robust way to clear previous links, preserving <defs>
             while (linksSvg.lastChild && linksSvg.lastChild.tagName !== 'defs') {
                 linksSvg.removeChild(linksSvg.lastChild);
             }
@@ -991,31 +1046,37 @@
             workflow.links.forEach(link => {
                 const sourceItem = workflow.items[link.sourceId];
                 const targetItem = workflow.items[link.targetId];
+                if (!sourceItem || !targetItem) return;
+
+                const connection = getClosestConnectionPoints(sourceItem, targetItem);
+                if (!connection) return;
+
+                const { startPoint, endPoint, fromSide } = connection;
                 
-                const sourceNode = document.getElementById(link.sourceId);
-                const targetNode = document.getElementById(link.targetId);
-
-                if (!sourceItem || !targetItem || !sourceNode || !targetNode) return;
-
-                const isSourceCollapsed = sourceNode.classList.contains('group') && !sourceNode.classList.contains('expanded');
-                const isTargetCollapsed = targetNode.classList.contains('group') && !targetNode.classList.contains('expanded');
-
-                const sourceWidth = isSourceCollapsed ? GROUP_COLLAPSED_WIDTH : sourceItem.width;
-                const sourceHeight = isSourceCollapsed ? GROUP_COLLAPSED_HEIGHT : sourceItem.height;
-                const targetWidth = isTargetCollapsed ? GROUP_COLLAPSED_WIDTH : targetItem.width;
-                const targetHeight = isTargetCollapsed ? GROUP_COLLAPSED_HEIGHT : targetItem.height;
-
-                const startPoint = { x: sourceItem.x + sourceWidth, y: sourceItem.y + sourceHeight / 2 };
-                const endPoint = { x: targetItem.x, y: targetItem.y + targetHeight / 2 };
-
                 const dx = endPoint.x - startPoint.x;
-                const curveOffset = Math.max(50, Math.abs(dx) * 0.4);
+                const dy = endPoint.y - startPoint.y;
+                const offset = Math.min(100, Math.hypot(dx, dy) * 0.3);
 
-                const cp1 = { x: startPoint.x + curveOffset, y: startPoint.y };
-                const cp2 = { x: endPoint.x - curveOffset, y: endPoint.y };
+                let cp1 = { ...startPoint };
+                let cp2 = { ...endPoint };
+
+                switch(fromSide) {
+                    case 'top':    cp1.y -= offset; break;
+                    case 'bottom': cp1.y += offset; break;
+                    case 'left':   cp1.x -= offset; break;
+                    case 'right':  cp1.x += offset; break;
+                }
+                
+                // Adjust cp2 based on where the line is *going to*
+                switch(connection.toSide) {
+                    case 'top':    cp2.y -= offset; break;
+                    case 'bottom': cp2.y += offset; break;
+                    case 'left':   cp2.x -= offset; break;
+                    case 'right':  cp2.x += offset; break;
+                }
 
                 const pathString = `M ${startPoint.x} ${startPoint.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${endPoint.x} ${endPoint.y}`;
-
+                
                 const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -1147,10 +1208,12 @@
             const mouseX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale;
             const mouseY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale;
             
-            const startX = sourceItem.x + sourceItem.width;
-            const startY = sourceItem.y + sourceItem.height / 2;
-            
-            tempLinkLine.setAttribute('d', `M ${startX} ${startY} L ${mouseX} ${mouseY}`);
+            const connection = getClosestConnectionPoints(sourceItem, { x: mouseX, y: mouseY, width: 1, height: 1 });
+            if (!connection) return;
+
+            const { startPoint } = connection;
+
+            tempLinkLine.setAttribute('d', `M ${startPoint.x} ${startPoint.y} L ${mouseX} ${mouseY}`);
             
             const targetNode = e.target.closest('.node');
             document.querySelectorAll('.node.link-target').forEach(n => n.classList.remove('link-target'));
