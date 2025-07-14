@@ -282,7 +282,6 @@
             align-content: flex-start;
         }
 
-        /* NEW: Styles for the icon representation of a collapsed top-level group */
         .group-icon-representation {
             width: 100%;
             height: 100%;
@@ -457,6 +456,8 @@
         }
         
         .link-clickable {
+            /* THE FIX: Added fill: none to prevent black polygons */
+            fill: none;
             stroke: transparent;
             stroke-width: 12;
             cursor: pointer;
@@ -687,7 +688,7 @@
 
         function handleMouseDown(e) {
             const clickedNode = e.target.closest('.node');
-            const clickedLink = e.target.closest('.link, .link-clickable');
+            const clickedLink = e.target.closest('.link-clickable');
 
             if (!clickedNode && !clickedLink && (e.ctrlKey || e.metaKey)) {
                 startSelection(e);
@@ -816,7 +817,6 @@
                 node.style.top = item.y + 'px';
             }
             
-            // Apply dimensions based on expanded/collapsed state for groups
             if (item.type === 'group' && !item.data.isExpanded) {
                 node.style.width = GROUP_COLLAPSED_WIDTH + 'px';
                 node.style.height = GROUP_COLLAPSED_HEIGHT + 'px';
@@ -875,7 +875,6 @@
             const content = document.createElement('div');
             content.className = 'node-content';
             
-            // Specific content creation
             switch (item.type) {
                 case 'scribble': content.innerHTML = `<textarea class="scribble-content" placeholder="Scribble away...">${item.data.content || ''}</textarea>`; break;
                 case 'task': content.innerHTML = createTaskContent(item.data); break;
@@ -887,7 +886,6 @@
                     populateGroupContent(groupContent, item);
                     content.appendChild(groupContent);
                     
-                    // NEW: Create the icon representation for collapsed state
                     const iconRepresentation = document.createElement('div');
                     iconRepresentation.className = 'group-icon-representation';
                     iconRepresentation.innerHTML = `<div class="group-icon-representation-symbol">${nodeIcons.group}</div>
@@ -943,7 +941,7 @@
             else if (type === 'adr') Object.assign(defaultData, { code: '', category: '', topic: '' });
             else if (isGroup) { Object.assign(defaultData, { children: [], isExpanded: true }); groups[id] = []; }
             
-            const item = { id, type, x, y, width: 300, height: 200, data: defaultData, parentId: contextMenuPos.groupId || null };
+            const item = { id, type, x, y, width: 400, height: 300, data: defaultData, parentId: contextMenuPos.groupId || null };
             workflow.items[id] = item;
             
             if (contextMenuPos.groupId) {
@@ -983,9 +981,12 @@
             autoSave();
         }
 
-        /** REBUILT LINK RENDERING **/
+        /** FINAL FIX for LINK RENDERING **/
         function updateLinks() {
-            linksSvg.innerHTML = linksSvg.querySelector('defs').outerHTML; // Clear all but defs
+            // A more robust way to clear previous links, preserving <defs>
+            while (linksSvg.lastChild && linksSvg.lastChild.tagName !== 'defs') {
+                linksSvg.removeChild(linksSvg.lastChild);
+            }
 
             workflow.links.forEach(link => {
                 const sourceItem = workflow.items[link.sourceId];
@@ -1004,7 +1005,6 @@
                 const targetWidth = isTargetCollapsed ? GROUP_COLLAPSED_WIDTH : targetItem.width;
                 const targetHeight = isTargetCollapsed ? GROUP_COLLAPSED_HEIGHT : targetItem.height;
 
-                // Connect from right-middle of source to left-middle of target
                 const startPoint = { x: sourceItem.x + sourceWidth, y: sourceItem.y + sourceHeight / 2 };
                 const endPoint = { x: targetItem.x, y: targetItem.y + targetHeight / 2 };
 
@@ -1019,15 +1019,15 @@
                 const linkGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.classList.add('link');
                 path.setAttribute('d', pathString);
                 path.setAttribute('marker-end', 'url(#arrowhead)');
-                
+                path.classList.add('link');
+
                 const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 clickPath.setAttribute('d', pathString);
                 clickPath.classList.add('link-clickable');
-                
-                clickPath.addEventListener('contextmenu', (e) => {
+
+                linkGroup.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     if (confirm('Delete this connection?')) {
                         workflow.links = workflow.links.filter(l => l.id !== link.id);
@@ -1105,7 +1105,6 @@
             if (item) { 
                 item.width = width; 
                 item.height = height; 
-                // Store the new size for when the group is re-expanded
                 if (item.type === 'group') {
                     item.data.expandedWidth = width;
                     item.data.expandedHeight = height;
@@ -1376,7 +1375,6 @@
             node.classList.add('selected');
         }
 
-        /** UPGRADED to handle group collapse/expand to icon **/
         function toggleNode(node) {
             const item = workflow.items[node.id];
             if (!item) return;
@@ -1385,10 +1383,8 @@
             item.data.isExpanded = !isCurrentlyExpanded;
             node.classList.toggle('expanded');
 
-            // Special handling for group nodes to switch to/from icon representation
             if (item.type === 'group') {
                 if (item.data.isExpanded) {
-                    // EXPANDING: Restore to previous or default size
                     const expandedWidth = item.data.expandedWidth || item.width;
                     const expandedHeight = item.data.expandedHeight || item.height;
                     node.style.width = expandedWidth + 'px';
@@ -1396,7 +1392,6 @@
                     item.width = expandedWidth;
                     item.height = expandedHeight;
                 } else {
-                    // COLLAPSING: Save current size and shrink to icon size
                     if (!item.data.expandedWidth || !item.data.expandedHeight) {
                         item.data.expandedWidth = item.width;
                         item.data.expandedHeight = item.height;
