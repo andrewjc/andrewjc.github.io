@@ -1,7 +1,8 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Enhanced Node-Based Dashboard</title>
+    <title>Agile Project Estimator - Canvas</title>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <style>
         body {
@@ -12,56 +13,50 @@
             background-color: #f0f0f0;
         }
 
-        /* --- NEW: Topbar --- */
         #topbar {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        #topbar h1 {
-            margin: 0;
-            font-size: 1.4em;
-            font-weight: 400;
-        }
-        #topbar .topbar-buttons button {
+            height: 40px;
             background-color: #007bff;
             color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #topbar button {
+            margin-right: 10px;
+            padding: 5px 10px;
+            background-color: white;
+            color: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 0.9em;
-            margin-left: 10px;
-            transition: background-color 0.2s;
         }
-        #topbar .topbar-buttons button:hover {
-            background-color: #0056b3;
+
+        #topbar button:hover {
+            background-color: #e9ecef;
         }
-        #file-loader {
+
+        #topbar input[type="file"] {
             display: none;
         }
 
         #canvas {
             position: relative;
             width: 100vw;
-            height: 100vh;
+            height: calc(100vh - 40px);
+            top: 40px;
             background-color: #e8e8e8;
             background-image: linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
                               linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
             background-size: 20px 20px;
-            overflow: hidden;
-            cursor: default;
-            padding-top: 55px; /* Adjust for topbar height */
-            box-sizing: border-box;
+            overflow: hidden; /* Hide overflow content */
+            cursor: default; /* Default cursor for canvas */
         }
 
         /* --- Tiles --- */
@@ -73,9 +68,9 @@
             padding: 15px;
             border-radius: 3px;
             min-width: 250px;
-            min-height: 150px;
+            min-height: 150px; /* Minimum height for usability */
             z-index: 10;
-            transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            transition: box-shadow 0.2s ease-in-out;
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -92,8 +87,8 @@
         }
 
         .tile.dragging {
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
-            opacity: 0.9;
+             box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+             opacity: 0.9;
         }
 
         .tile .tile-header {
@@ -103,210 +98,304 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: grab;
+            cursor: grab; /* Header is the drag handle */
             flex-shrink: 0;
             position: relative;
             padding-left: 10px;
             padding-right: 10px;
             padding-top: 5px;
-            margin: -15px -15px 10px -15px;
+            margin: -15px -15px 10px -15px; /* Adjust to fill padding */
         }
 
-        .tile .tile-header::before {
+        .tile .tile-header::before { /* Background for header */
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(211, 211, 211, 0.3);
+            background-color: rgba(211, 211, 211, 0.3); /* Light grey 30% opacity */
             z-index: -1;
             border-radius: 3px 3px 0 0;
             border-bottom: 1px solid #eee;
         }
 
-        .tile .tile-header h3 {
-            margin: 0;
+         .tile .tile-header h3 {
+             margin: 0;
+             font-size: 1.1em;
+             color: #333;
+             flex-grow: 1;
+             margin-right: 10px;
+             overflow: hidden;
+             white-space: nowrap;
+             text-overflow: ellipsis;
+             cursor: default;
+             padding: 2px 4px;
+             border-radius: 2px;
+         }
+         .tile .tile-header h3[contenteditable="true"] { /* Style when editing */
+              background-color: rgba(0, 123, 255, 0.1);
+              outline: 1px solid rgba(0, 123, 255, 0.5);
+              cursor: text;
+              user-select: text;
+              -webkit-user-select: text;
+              -moz-user-select: text;
+              -ms-user-select: text;
+         }
+
+         /* --- Type Change Dropdown --- */
+         .tile .tile-header .change-type-btn {
             font-size: 1.1em;
-            color: #333;
-            flex-grow: 1;
-            margin-right: 10px;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            cursor: default;
-            padding: 2px 4px;
-            border-radius: 2px;
+            cursor: pointer;
+            color: #bbb; /* Lighter grey */
+            padding: 0 3px;
+            margin-right: 5px; /* Space before delete */
+            line-height: 1;
+            z-index: 1; /* Ensure button is above pseudo-element */
+            font-family: sans-serif; /* Ensure consistent arrow */
+            display: inline-block;
+            vertical-align: middle;
         }
-        .tile .tile-header h3[contenteditable="true"] {
-            background-color: rgba(0, 123, 255, 0.1);
-            outline: 1px solid rgba(0, 123, 255, 0.5);
-            cursor: text;
-            user-select: text;
+        .tile .tile-header .change-type-btn:hover {
+            color: #555; /* Darken on hover */
         }
-
-        /* --- Type Change Dropdown --- */
-        .tile .tile-header .change-type-btn {
-            font-size: 1.1em; cursor: pointer; color: #bbb; padding: 0 3px;
-            margin-right: 5px; line-height: 1; z-index: 1; font-family: sans-serif;
-            display: inline-block; vertical-align: middle;
-        }
-        .tile .tile-header .change-type-btn:hover { color: #555; }
-        .tile.estimator .change-type-btn, .tile.group .change-type-btn {
-            opacity: 0.4; cursor: not-allowed;
+        /* Dim button for estimator tiles */
+        .tile.estimator .change-type-btn {
+             opacity: 0.4;
+             cursor: not-allowed;
         }
 
-        .tile .tile-header .delete-btn {
-            font-size: 1.2em; cursor: pointer; color: #aaa; padding: 0 5px;
-            line-height: 1; z-index: 1;
-        }
-        .tile .tile-header .delete-btn:hover { color: #dc3545; }
+         .tile .tile-header .delete-btn {
+            font-size: 1.2em;
+            cursor: pointer;
+            color: #aaa;
+            padding: 0 5px;
+            line-height: 1;
+            z-index: 1; /* Ensure button is above pseudo-element */
+         }
+         .tile .tile-header .delete-btn:hover {
+            color: #dc3545;
+         }
 
         .tile .tile-content {
-            flex-grow: 1; overflow-y: auto; overflow-x: hidden;
-            user-select: text; -webkit-user-select: text;
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
             cursor: default;
         }
 
+
         .tile label {
-            display: flex; align-items: center; margin-top: 8px;
-            font-size: 0.9em; cursor: default;
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+            font-size: 0.9em;
+            cursor: default;
         }
 
         .tile label span {
-            width: 110px; margin-right: 5px; color: #555;
-            white-space: nowrap; flex-shrink: 0;
+            width: 110px;
+            margin-right: 5px;
+            color: #555;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .tile input[type="number"], .tile select, .tile input[type="text"], .tile textarea {
-            flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 3px;
-            font-size: 0.9em; user-select: text; cursor: auto;
-            width: auto; box-sizing: border-box;
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 0.9em;
+             user-select: text;
+             -webkit-user-select: text;
+             -moz-user-select: text;
+             -ms-user-select: text;
+             cursor: auto;
+             width: auto;
+             box-sizing: border-box;
         }
-        .tile textarea { resize: none; min-height: 50px; font-family: inherit; flex-grow: 1; }
+         .tile textarea {
+             resize: none;
+             min-height: 50px;
+             font-family: inherit;
+             flex-grow: 1;
+         }
 
-        /* Data Tile Specifics */
-        .tile.data .data-image { max-width: 100%; height: auto; display: block; margin-top: 5px; }
-        .tile.data .data-text { width: 100%; height: 100%; box-sizing: border-box; white-space: pre-wrap; word-wrap: break-word; }
+         /* Data Tile Specifics */
+         .tile.data .data-image {
+             max-width: 100%;
+             height: auto;
+             display: block;
+             margin-top: 5px;
+         }
+         .tile.data .data-text {
+             width: 100%;
+             height: 100%;
+             box-sizing: border-box;
+             white-space: pre-wrap;
+             word-wrap: break-word;
+         }
+
 
         /* Estimator Tile Specifics */
-        .tile.estimator h4 { font-size: 1em; margin-bottom: 8px; border-bottom: none; }
+        .tile.estimator h4 {
+            font-size: 1em;
+            margin-bottom: 8px;
+            border-bottom: none;
+        }
         .tile.estimator p { margin: 4px 0; font-size: 0.95em; cursor: default; }
         .tile.estimator strong { font-weight: bold; color: #0056b3; }
         .tile.estimator .result { margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee; font-size: 1.1em; font-weight: bold; color: #004085; cursor: default; }
 
         /* Scribble Pad Tile Specifics */
-        .tile.scribble .tile-content { padding: 5px; }
+        .tile.scribble .tile-content {
+            padding: 5px; /* Less internal padding */
+        }
         .tile.scribble .scribble-text {
-            width: 100%; height: 100%; box-sizing: border-box; border: none; outline: none; resize: none;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 0.95em;
-            line-height: 1.4; background-color: transparent; padding: 5px; user-select: text; cursor: auto;
-        }
-
-        /* --- NEW: Group Tile Specifics --- */
-        .tile.group {
-            background-color: #e0e8ff; /* Light blue */
-            border-color: #a0b0e0;
-            transition: all 0.3s ease-in-out;
-        }
-        .tile.group .tile-header::before {
-            background-color: rgba(160, 176, 224, 0.4);
-        }
-        .tile.group .group-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 100%;
             height: 100%;
-            text-align: center;
-            color: #445a8a;
-        }
-        .tile.group.expanded {
-            background-color: rgba(200, 210, 240, 0.5);
-            border: 2px dashed #a0b0e0;
-            padding: 0;
-            z-index: 8; /* Below normal tiles */
-        }
-        .tile.group.expanded .tile-header {
-            background-color: rgba(160, 176, 224, 0.6);
-            cursor: pointer;
-            margin: 0;
-            padding: 10px;
-            border-bottom: 2px dashed #a0b0e0;
-            border-radius: 3px 3px 0 0;
-        }
-        .tile.group.expanded .tile-header::before { display: none; }
-        .tile.group.expanded .tile-content { display: none; }
-        .tile.group.expanded .resizer, .tile.group.expanded .delete-btn {
-            display: none;
-        }
-        .tile.hidden-child {
-            display: none !important;
+            box-sizing: border-box;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 0.95em;
+            line-height: 1.4;
+            background-color: transparent;
+            padding: 5px;
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            cursor: auto;
         }
 
-
+         /* Resizer Handle */
         .resizer {
-            position: absolute; width: 15px; height: 15px;
-            background: rgba(0, 123, 255, 0.3); border: 1px solid rgba(0, 123, 255, 0.6);
-            bottom: -1px; right: -1px; cursor: nwse-resize;
-            z-index: 12; border-radius: 0 0 3px 0;
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: rgba(0, 123, 255, 0.3);
+            border: 1px solid rgba(0, 123, 255, 0.6);
+            bottom: -1px;
+            right: -1px;
+            cursor: nwse-resize;
+            z-index: 12;
+            border-radius: 0 0 3px 0;
         }
 
         /* --- Context Menu --- */
         #context-menu {
-            position: absolute; background-color: #fff; border: 1px solid #ccc;
-            box-shadow: 3px 3px 8px rgba(0,0,0,0.15); padding: 5px 0; min-width: 150px;
-            z-index: 100; display: none; border-radius: 4px;
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 3px 3px 8px rgba(0,0,0,0.15);
+            padding: 5px 0;
+            min-width: 150px;
+            z-index: 100;
+            display: none;
+            border-radius: 4px;
         }
         #context-menu ul { list-style: none; margin: 0; padding: 0; }
         #context-menu ul li { padding: 8px 15px; cursor: pointer; font-size: 0.95em; position: relative; white-space: nowrap; }
         #context-menu ul li:hover { background-color: #f0f0f0; }
-        #context-menu ul li.disabled { color: #aaa; cursor: not-allowed; background-color: #fff; }
         #context-menu ul li.has-submenu::after { content: '▶'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.8em; color: #888; }
-        #context-menu ul ul {
-            position: absolute; left: 100%; top: -5px; display: none; background-color: #fff;
-            border: 1px solid #ccc; box-shadow: 3px 3px 8px rgba(0,0,0,0.15); padding: 5px 0;
-            min-width: 250px; max-height: 400px; overflow-y: auto; border-radius: 4px;
-        }
+        #context-menu ul ul { position: absolute; left: 100%; top: -5px; display: none; background-color: #fff; border: 1px solid #ccc; box-shadow: 3px 3px 8px rgba(0,0,0,0.15); padding: 5px 0; min-width: 250px; max-height: 400px; overflow-y: auto; border-radius: 4px; }
         #context-menu ul li:hover > ul { display: block; }
-        #context-menu .separator { height: 1px; background-color: #eee; margin: 5px 0; }
 
-        /* Type Change Menu */
+        /* --- Type Change Menu --- */
         #type-change-menu {
-            position: absolute; background-color: #fff; border: 1px solid #ccc;
-            box-shadow: 2px 2px 6px rgba(0,0,0,0.15); padding: 4px 0; min-width: 120px;
-            z-index: 101; display: none; border-radius: 3px;
+            position: absolute;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.15);
+            padding: 4px 0;
+            min-width: 120px;
+            z-index: 101; /* Above context menu */
+            display: none; /* Hidden by default */
+            border-radius: 3px;
         }
         #type-change-menu ul { list-style: none; margin: 0; padding: 0; }
         #type-change-menu ul li { padding: 6px 12px; cursor: pointer; font-size: 0.9em; white-space: nowrap; }
         #type-change-menu ul li:hover { background-color: #f0f0f0; }
-        #type-change-menu ul li.disabled { color: #aaa; cursor: not-allowed; background-color: #fff; }
-
-        .tile.task .description.editing {
-            background-color: rgba(255, 255, 0, 0.2); outline: 1px dashed #ccc; padding: 3px;
-            margin: -3px; cursor: text; user-select: text; white-space: pre-wrap; min-height: 1.5em;
+        #type-change-menu ul li.disabled {
+            color: #aaa;
+            cursor: not-allowed;
+            background-color: #fff; /* Prevent hover effect */
         }
 
-        /* SVG Arrows */
+/* Style for description during editing */
+        .tile.task .description.editing {
+            background-color: rgba(255, 255, 0, 0.2); /* Slight yellow background */
+            outline: 1px dashed #ccc;
+            padding: 3px;
+            margin: -3px; /* Adjust margin to keep layout stable */
+            cursor: text;
+            user-select: text; /* Allow selection */
+             -webkit-user-select: text;
+             -moz-user-select: text;
+             -ms-user-select: text;
+             white-space: pre-wrap; /* Respect whitespace during edit */
+             min-height: 1.5em; /* Ensure it's clickable even when empty */
+        }
+
+        /* --- SVG Arrows --- */
         #arrow-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }
         .arrow { stroke: #5a5a5a; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+
+        /* --- Group Workflow Styles --- */
+        .tile.group {
+            background-color: #f0f8ff; /* Light blue for groups */
+            border: 2px solid #007bff;
+            padding: 0;
+        }
+
+        .tile.group.collapsed .group-content {
+            display: none;
+        }
+
+        .tile.group.expanded {
+            padding: 15px;
+            min-width: 400px;
+            min-height: 300px;
+        }
+
+        .tile.group.expanded .group-content {
+            display: block;
+            position: relative;
+            height: calc(100% - 40px); /* Adjust for header */
+            overflow: auto;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 3px;
+            padding: 10px;
+        }
+
+        .tile.group .sub-tile {
+            position: absolute; /* Sub-tiles positioned within group */
+        }
+
     </style>
 </head>
 <body>
 
 <div id="topbar">
-    <h1>Node-Based Dashboard</h1>
-    <div class="topbar-buttons">
-        <button id="save-btn">Save Workflow</button>
-        <button id="load-btn">Load Workflow</button>
-        <input type="file" id="file-loader" accept=".json">
-    </div>
+    <button id="save-btn">Save Dashboard</button>
+    <label for="load-file">Load Dashboard</label>
+    <input type="file" id="load-file" accept=".json">
 </div>
 
 <div id="canvas">
+    <!-- Tiles dynamically added here -->
     <svg id="arrow-layer">
         <defs>
             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                <path d="M0,0 L10,3.5 L0,7 Z" fill="#5a5a5a" />
+              <path d="M0,0 L10,3.5 L0,7 Z" fill="#5a5a5a" />
             </marker>
         </defs>
     </svg>
@@ -320,16 +409,26 @@
             <ul id="preset-submenu"><li>Loading...</li></ul>
         </li>
         <li id="add-estimator">Estimator</li>
+        <!-- ADDED: Option to add scribble pad directly -->
         <li id="add-scribble-pad">Scribble Pad</li>
-        <li class="separator"></li>
-        <li id="group-selection">Group Selection</li>
+        <li id="add-group">Group Workflow</li>
+        <li id="add-knowledge-section">Knowledge Section</li>
+        <li id="add-knowledge-subsection">Knowledge Subsection</li>
+        <li id="add-knowledge-item">Knowledge Item</li>
+        <li id="add-adr">ADR</li>
     </ul>
 </div>
 
-<div id="type-change-menu"><ul></ul></div>
+<!-- Type Change Menu (initially hidden) -->
+<div id="type-change-menu">
+    <ul>
+        <!-- Options will be populated by JS -->
+    </ul>
+</div>
 
+<!-- Templates (Hidden) -->
 <template id="task-template">
-    <div class="tile task" id="">
+    <div class="tile task" id=""> <!-- Dynamic ID -->
         <div class="tile-header">
             <h3 class="tile-title">New Task</h3>
             <span class="change-type-btn" title="Change Type">▾</span>
@@ -342,12 +441,12 @@
             <label><span>Priority (1-5):</span> <input type="number" class="priority" value="3" min="1" max="5" step="1"> </label>
             <label><span>Base Duration (days):</span> <input type="number" step="0.5" min="0.5" class="duration" value="1"> </label>
         </div>
-        <div class="resizer"></div>
+        <div class="resizer"></div> <!-- Resize Handle -->
     </div>
 </template>
 
 <template id="estimator-template">
-    <div class="tile estimator" id="">
+     <div class="tile estimator" id=""> <!-- Dynamic ID -->
         <div class="tile-header">
             <h3 class="tile-title">Project Estimator</h3>
             <span class="change-type-btn" title="Change Type">▾</span>
@@ -368,48 +467,106 @@
                 <p>Est. Duration (days): <strong id="result-duration">N/A</strong></p>
             </div>
         </div>
-        <div class="resizer"></div>
+        <div class="resizer"></div> <!-- Resize Handle -->
     </div>
 </template>
 
-<template id="data-template">
-    <div class="tile data" id="">
+<template id="data-template"> <!-- Represents pasted Text/Image -->
+    <div class="tile data" id=""> <!-- Dynamic ID -->
         <div class="tile-header">
             <h3 class="tile-title">Data</h3>
             <span class="change-type-btn" title="Change Type">▾</span>
             <span class="delete-btn" title="Delete Data">×</span>
         </div>
         <div class="tile-content">
-            <img class="data-image" src="" alt="Pasted image" style="display: none;">
-            <textarea class="data-text" placeholder="Pasted text..." style="display: none;"></textarea>
+             <img class="data-image" src="" alt="Pasted image" style="display: none;">
+             <textarea class="data-text" placeholder="Pasted text..." style="display: none;"></textarea>
         </div>
-        <div class="resizer"></div>
+        <div class="resizer"></div> <!-- Resize Handle -->
     </div>
 </template>
 
 <template id="scribble-template">
-    <div class="tile scribble" id="">
+    <div class="tile scribble" id=""> <!-- Dynamic ID -->
         <div class="tile-header">
             <h3 class="tile-title">Scribble Pad</h3>
             <span class="change-type-btn" title="Change Type">▾</span>
             <span class="delete-btn" title="Delete Scribble Pad">×</span>
         </div>
         <div class="tile-content">
-            <textarea class="scribble-text" placeholder="Start typing..."></textarea>
+             <textarea class="scribble-text" placeholder="Start typing..."></textarea>
+        </div>
+        <div class="resizer"></div> <!-- Resize Handle -->
+    </div>
+</template>
+
+<template id="group-template">
+    <div class="tile group collapsed" id=""> <!-- Dynamic ID -->
+        <div class="tile-header">
+            <h3 class="tile-title">Group Workflow</h3>
+            <span class="change-type-btn" title="Change Type">▾</span>
+            <span class="delete-btn" title="Delete Group">×</span>
+        </div>
+        <div class="group-content" style="display: none;">
+            <!-- Sub-tiles added here dynamically -->
+        </div>
+        <div class="resizer"></div> <!-- Resize Handle -->
+    </div>
+</template>
+
+<template id="knowledge-section-template">
+    <div class="tile knowledge-section" id="">
+        <div class="tile-header">
+            <h3 class="tile-title">Knowledge Section</h3>
+            <span class="change-type-btn" title="Change Type">▾</span>
+            <span class="delete-btn" title="Delete">×</span>
+        </div>
+        <div class="tile-content">
+            <textarea class="knowledge-content" placeholder="Section content..."></textarea>
         </div>
         <div class="resizer"></div>
     </div>
 </template>
 
-<template id="group-template">
-    <div class="tile group" id="">
+<template id="knowledge-subsection-template">
+    <div class="tile knowledge-subsection" id="">
         <div class="tile-header">
-            <h3 class="tile-title">New Group</h3>
+            <h3 class="tile-title">Knowledge Subsection</h3>
             <span class="change-type-btn" title="Change Type">▾</span>
-            <span class="delete-btn" title="Delete Group">×</span>
+            <span class="delete-btn" title="Delete">×</span>
         </div>
-        <div class="tile-content group-content">
-            <p>This is a group. Double-click to expand.</p>
+        <div class="tile-content">
+            <textarea class="knowledge-content" placeholder="Subsection content..."></textarea>
+        </div>
+        <div class="resizer"></div>
+    </div>
+</template>
+
+<template id="knowledge-item-template">
+    <div class="tile knowledge-item" id="">
+        <div class="tile-header">
+            <h3 class="tile-title">Knowledge Item</h3>
+            <span class="change-type-btn" title="Change Type">▾</span>
+            <span class="delete-btn" title="Delete">×</span>
+        </div>
+        <div class="tile-content">
+            <textarea class="knowledge-content" placeholder="Item details..."></textarea>
+        </div>
+        <div class="resizer"></div>
+    </div>
+</template>
+
+<template id="adr-template">
+    <div class="tile adr" id="">
+        <div class="tile-header">
+            <h3 class="tile-title">ADR</h3>
+            <span class="change-type-btn" title="Change Type">▾</span>
+            <span class="delete-btn" title="Delete">×</span>
+        </div>
+        <div class="tile-content">
+            <label><span>Code:</span> <input type="text" class="adr-code"></label>
+            <label><span>Category:</span> <input type="text" class="adr-category"></label>
+            <label><span>Topic:</span> <textarea class="adr-topic"></textarea></label>
         </div>
         <div class="resizer"></div>
     </div>
@@ -417,7 +574,6 @@
 
 
 <script>
-    // --- Element Cache ---
     const canvas = document.getElementById('canvas');
     const contextMenu = document.getElementById('context-menu');
     const taskTemplate = document.getElementById('task-template');
@@ -425,29 +581,53 @@
     const dataTemplate = document.getElementById('data-template');
     const scribbleTemplate = document.getElementById('scribble-template');
     const groupTemplate = document.getElementById('group-template');
+    const knowledgeSectionTemplate = document.getElementById('knowledge-section-template');
+    const knowledgeSubsectionTemplate = document.getElementById('knowledge-subsection-template');
+    const knowledgeItemTemplate = document.getElementById('knowledge-item-template');
+    const adrTemplate = document.getElementById('adr-template');
     const svgLayer = document.getElementById('arrow-layer');
     const presetSubmenu = document.getElementById('preset-submenu');
     const typeChangeMenu = document.getElementById('type-change-menu');
-    const fileLoader = document.getElementById('file-loader');
+    const saveBtn = document.getElementById('save-btn');
+    const loadFile = document.getElementById('load-file');
 
+    const LOCAL_STORAGE_KEY = 'canvasAppState_v4'; // Updated version
 
-    const LOCAL_STORAGE_KEY = 'canvasAppState_v4'; // Incremented version
-
-    // --- State Variables ---
+    // State variables
     let items = {};
     let links = [];
-    let selectedItemIds = []; // MODIFIED: For multi-select
+    let selectedItemId = null;
     let nextItemId = 1;
     let nextLinkId = 1;
     let currentPasteCoords = { x: 100, y: 100 };
-    let activeTypeChangeMenuTarget = null;
+    let activeTypeChangeMenuTarget = null; // Track which item the type menu is for
+    let groups = {}; // Track group memberships: {groupId: [subItemIds]}
 
-    // --- Constants ---
     const MARKER_WIDTH = 10;
     const DEFAULT_TILE_WIDTH = 300;
     const DEFAULT_TILE_HEIGHT = 200;
     const fibonacciNumbers = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
-    const commonTasks = [ /* (Task list remains the same) */ ]; // Truncated for brevity
+    const commonTasks = [ /* (Task list remains the same) */
+        { title: "Create API Endpoint", description: "Develop a new RESTful API endpoint.", complexity: 5, risk: 0.25, priority: 5, duration: 5 },
+        { title: "Create API Swagger Documentation", description: "Develop Swagger/OpenAPI documentation for a RESTful API endpoint.", complexity: 2, risk: 0.1, priority: 1, duration: 2 },
+        { title: "Implement Authentication", description: "Set up authentication mechanisms using Spring Security.", complexity: 8, risk: 0.3, priority: 5, duration: 8 },
+        { title: "Implement Authorization", description: "Define roles and permissions for API access.", complexity: 8, risk: 0.3, priority: 5, duration: 8 },
+        { title: "Configure Database Connection", description: "Set up connection to the database using JPA/Hibernate.", complexity: 5, risk: 0.2, priority: 5, duration: 5 },
+        { title: "Implement CRUD Operations", description: "Create Create, Read, Update, Delete operations for an entity.", complexity: 5, risk: 0.2, priority: 5, duration: 5 },
+        { title: "Implement Exception Handling", description: "Set up global exception handling for the API.", complexity: 3, risk: 0.15, priority: 4, duration: 3 },
+        { title: "Implement Logging", description: "Set up logging using Logback or Log4j.", complexity: 2, risk: 0.1, priority: 3, duration: 2 },
+        { title: "Write Unit Tests", description: "Write unit tests using JUnit and Mockito.", complexity: 5, risk: 0.2, priority: 5, duration: 5 },
+        { title: "Implement Caching", description: "Set up caching mechanisms for the API.", complexity: 5, risk: 0.25, priority: 4, duration: 5 },
+        { title: "Implement Pagination", description: "Add pagination support to endpoints returning lists.", complexity: 3, risk: 0.15, priority: 4, duration: 3 },
+        { title: "Optimize Performance", description: "Identify and fix performance bottlenecks.", complexity: 8, risk: 0.4, priority: 3, duration: 8 },
+        { title: "Implement Data Validation", description: "Add validation to incoming data.", complexity: 3, risk: 0.15, priority: 4, duration: 3 },
+        { title: "Setup Continuous Integration", description: "Configure CI pipeline for automatic builds and tests.", complexity: 5, risk: 0.25, priority: 3, duration: 5 },
+        { title: "Deploy to Production Environment", description: "Prepare and deploy application to production.", complexity: 8, risk: 0.35, priority: 5, duration: 8 },
+        { title: "Refactor Code", description: "Improve code structure and readability.", complexity: 5, risk: 0.2, priority: 2, duration: 5 },
+        { title: "Conduct Code Review", description: "Review code for best practices and standards.", complexity: 3, risk: 0.1, priority: 2, duration: 3 },
+        { title: "Implement Security Measures", description: "Add security measures like input sanitization.", complexity: 5, risk: 0.3, priority: 5, duration: 5 },
+        { title: "Setup API Monitoring", description: "Implement monitoring tools for API health.", complexity: 5, risk: 0.25, priority: 3, duration: 5 },
+    ];
 
     // --- Initialization ---
     function initialize() {
@@ -455,42 +635,55 @@
         setupCanvasListeners();
         setupGlobalListeners();
         setupPasteListener();
-        setupContextMenuListeners();
-        setupTopbarListeners(); // NEW
-        loadState(); // Load from localStorage on startup
+        setupContextMenuListeners(); // Setup listeners for context menu items
+        setupTopbarListeners();
+        loadState();
     }
 
     // --- UI Setup ---
     function populatePresets() {
-        /* ... (This function remains unchanged) ... */
+        if (!presetSubmenu) { console.error("Preset submenu element not found!"); return; }
+        presetSubmenu.innerHTML = '';
+        if (!Array.isArray(commonTasks) || commonTasks.length === 0) {
+            const li = document.createElement('li'); li.textContent = 'No presets available'; li.style.color = '#888'; presetSubmenu.appendChild(li); return;
+        }
+        try {
+            commonTasks.forEach((task, index) => {
+                if (!task || typeof task.title !== 'string' || !task.title.trim()) { console.warn(`Skipping invalid task preset at index ${index}:`, task); return; }
+                const li = document.createElement('li'); li.textContent = task.title.trim(); li.title = task.description || `Preset: ${task.title.trim()}`; li.dataset.presetIndex = index;
+                li.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const clickedIndex = parseInt(e.currentTarget.dataset.presetIndex);
+                    if (isNaN(clickedIndex) || clickedIndex < 0 || clickedIndex >= commonTasks.length) { console.error("Invalid preset index on click:", e.currentTarget.dataset.presetIndex); hideContextMenu(); return; }
+                    const preset = commonTasks[clickedIndex];
+                    const pageXStr = contextMenu.dataset.pageX; const pageYStr = contextMenu.dataset.pageY;
+                    let coords = {};
+                    if (pageXStr && pageYStr) { coords.pageX = parseInt(pageXStr, 10); coords.pageY = parseInt(pageYStr, 10); }
+                    if (isNaN(coords.pageX) || isNaN(coords.pageY)) { coords = { pageX: currentPasteCoords.x, pageY: currentPasteCoords.y }; coords.pageX = parseInt(coords.pageX, 10); coords.pageY = parseInt(coords.pageY, 10); }
+                    if (isNaN(coords.pageX) || isNaN(coords.pageY)) { console.error("Failed to determine valid coordinates for preset task."); hideContextMenu(); return; }
+                    createAndAddItem('task', coords, preset);
+                    hideContextMenu();
+                });
+                presetSubmenu.appendChild(li);
+            });
+        } catch (error) {
+            console.error("Error populating presets:", error);
+            presetSubmenu.innerHTML = ''; const errorLi = document.createElement('li'); errorLi.textContent = 'Error loading presets'; errorLi.style.color = 'red'; presetSubmenu.appendChild(errorLi);
+        }
     }
 
     function setupCanvasListeners() {
         canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            // If right-clicking the canvas itself, show the menu
-            if (e.target === canvas || e.target.closest('#arrow-layer')) {
-                showContextMenu(e);
-                // If not clicking on an already selected item, clear previous selections
-                if (!selectedItemIds.some(id => items[id]?.element?.contains(e.target))) {
-                    deselectAllItems();
-                }
-            } else {
-                // If right-clicking a tile, the tile's own listener will handle selection.
-                // We still show the context menu.
-                showContextMenu(e);
-            }
+            if (e.target === canvas || e.target === svgLayer) { showContextMenu(e.clientX, e.clientY, e.pageX, e.pageY); deselectAllItems(); }
+            else { hideContextMenu(); if (!e.target.closest('.tile')) { deselectAllItems(); } }
         });
         canvas.addEventListener('click', (e) => {
-            // Click on canvas background
-            const clickedOnTile = e.target.closest('.tile');
-            if (!clickedOnTile && !contextMenu.contains(e.target) && !typeChangeMenu.contains(e.target)) {
+            if (e.target === canvas && !contextMenu.contains(e.target) && !typeChangeMenu.contains(e.target)) {
                  currentPasteCoords = { x: e.pageX, y: e.pageY };
                  hideContextMenu();
-                 hideTypeChangeMenu();
-                 if (!e.shiftKey) { // MODIFIED: Deselect only if shift is not pressed
-                     deselectAllItems();
-                 }
+                 hideTypeChangeMenu(); // Hide type menu too
+                 deselectAllItems();
             }
         });
         canvas.addEventListener('mousemove', (e) => { if (e.target === canvas) { currentPasteCoords = { x: e.pageX, y: e.pageY }; } });
@@ -500,611 +693,705 @@
         document.addEventListener('keydown', (e) => {
             const activeElement = document.activeElement;
             const isEditingText = activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
-            
-            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemIds.length > 0 && !isEditingText) {
-                e.preventDefault();
-                const itemType = items[selectedItemIds[0]]?.type || 'item';
-                const deleteMessage = `Delete ${selectedItemIds.length} selected ${itemType}(s)?`;
-                if (confirm(deleteMessage)) {
-                    // Create a copy of the array to iterate over, as deleteItem modifies the original
-                    [...selectedItemIds].forEach(id => deleteItem(id));
-                }
+            if (e.code === 'Space' && selectedItemId && items[selectedItemId]?.type === 'task' && !isEditingText) { e.preventDefault(); createAssociatedTask(selectedItemId); }
+            else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemId && !isEditingText) {
+                 e.preventDefault();
+                 const itemToDelete = items[selectedItemId];
+                 if (itemToDelete) {
+                     const deleteMessage = `Delete ${itemToDelete.type} "${itemToDelete.data?.title || itemToDelete.id}"?`;
+                     if (confirm(deleteMessage)) { deleteItem(selectedItemId); }
+                 }
             }
         });
         document.addEventListener('click', (e) => {
+             // Hide context menu if clicking anywhere outside it
              if (!contextMenu.contains(e.target)) { hideContextMenu(); }
+             // Type change menu hiding handled separately by its own outside click listener
         }, true);
     }
 
-    function setupPasteListener() { /* ... (This function remains unchanged) ... */ }
-
-    function setupContextMenuListeners() {
-        document.getElementById('add-general-task').addEventListener('click', (e) => {
-            e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('task', coords); hideContextMenu();
-        });
-        document.getElementById('add-estimator').addEventListener('click', (e) => {
-            e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('estimator', coords); hideContextMenu();
-        });
-        document.getElementById('add-scribble-pad').addEventListener('click', (e) => {
-            e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('scribble', coords); hideContextMenu();
-        });
-        // NEW: Group selection listener
-        document.getElementById('group-selection').addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (selectedItemIds.length > 1) {
-                createGroupFromSelection();
+    function setupPasteListener() {
+        document.addEventListener('paste', (event) => {
+            const activeElement = document.activeElement;
+            const isEditingText = activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
+            if (isEditingText) return;
+            const clipboardData = event.clipboardData || window.clipboardData; if (!clipboardData) return;
+            const imageItem = Array.from(clipboardData.items).find(item => item.kind === 'file' && item.type.startsWith('image/'));
+            if (imageItem) {
+                event.preventDefault(); const imageFile = imageItem.getAsFile(); const reader = new FileReader();
+                reader.onload = (e) => { createAndAddItem('data', currentPasteCoords, { dataType: 'image', content: e.target.result }); };
+                reader.readAsDataURL(imageFile); return;
             }
-            hideContextMenu();
+            const textItem = Array.from(clipboardData.items).find(item => item.type === 'text/plain');
+            if (textItem) {
+                event.preventDefault();
+                textItem.getAsString((text) => { if (text && text.trim().length > 0) { createAndAddItem('data', currentPasteCoords, { dataType: 'text', content: text }); } });
+            }
         });
     }
 
-    // --- NEW: Topbar Listeners for Save/Load ---
+    function setupContextMenuListeners() {
+         document.getElementById('add-general-task').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('task', coords); hideContextMenu();
+         });
+         document.getElementById('add-estimator').addEventListener('click', (e) => {
+              e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('estimator', coords); hideContextMenu();
+         });
+         document.getElementById('add-scribble-pad').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('scribble', coords); hideContextMenu();
+         });
+         document.getElementById('add-group').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('group', coords); hideContextMenu();
+         });
+         document.getElementById('add-knowledge-section').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('knowledge-section', coords); hideContextMenu();
+         });
+         document.getElementById('add-knowledge-subsection').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('knowledge-subsection', coords); hideContextMenu();
+         });
+         document.getElementById('add-knowledge-item').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('knowledge-item', coords); hideContextMenu();
+         });
+         document.getElementById('add-adr').addEventListener('click', (e) => {
+             e.stopPropagation(); const coords = { pageX: contextMenu.dataset.pageX, pageY: contextMenu.dataset.pageY }; createAndAddItem('adr', coords); hideContextMenu();
+         });
+         // Preset click handled inside populatePresets
+    }
+
     function setupTopbarListeners() {
-        document.getElementById('save-btn').addEventListener('click', handleSave);
-        document.getElementById('load-btn').addEventListener('click', () => fileLoader.click());
-        fileLoader.addEventListener('change', handleLoad);
+        saveBtn.addEventListener('click', () => {
+            const state = getSerializableState();
+            const blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dashboard.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        loadFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const state = JSON.parse(event.target.result);
+                    loadStateFromFile(state);
+                } catch (error) {
+                    console.error('Error loading file:', error);
+                    alert('Invalid file format.');
+                }
+            };
+            reader.readAsText(file);
+        });
     }
 
     // --- Context Menu Logic ---
-    function showContextMenu(e) {
-        // NEW: Logic to enable/disable "Group Selection" option
-        const groupOption = document.getElementById('group-selection');
-        if (selectedItemIds.length > 1) {
-            groupOption.classList.remove('disabled');
-        } else {
-            groupOption.classList.add('disabled');
-        }
-
-        const { clientX, clientY, pageX, pageY } = e;
-        const menuWidth = contextMenu.offsetWidth || 150; const menuHeight = contextMenu.offsetHeight || 100;
-        const bodyWidth = document.documentElement.clientWidth; const bodyHeight = document.documentElement.clientHeight;
-        const adjustedX = (clientX + menuWidth > bodyWidth) ? (bodyWidth - menuWidth - 5) : clientX;
-        const adjustedY = (clientY + menuHeight > bodyHeight) ? (bodyHeight - menuHeight - 5) : clientY;
-        contextMenu.style.left = `${adjustedX}px`; contextMenu.style.top = `${adjustedY}px`;
-        contextMenu.style.display = 'block'; contextMenu.dataset.pageX = pageX; contextMenu.dataset.pageY = pageY;
-        hideTypeChangeMenu();
+    function showContextMenu(clientX, clientY, pageX, pageY) {
+        const menuWidth = contextMenu.offsetWidth || 150; const menuHeight = contextMenu.offsetHeight || 100; const bodyWidth = document.documentElement.clientWidth; const bodyHeight = document.documentElement.clientHeight; const adjustedX = (clientX + menuWidth > bodyWidth) ? (bodyWidth - menuWidth - 5) : clientX; const adjustedY = (clientY + menuHeight > bodyHeight) ? (bodyHeight - menuHeight - 5) : clientY; contextMenu.style.left = `${adjustedX}px`; contextMenu.style.top = `${adjustedY + 40}px`; contextMenu.style.display = 'block'; contextMenu.dataset.pageX = pageX; contextMenu.dataset.pageY = pageY;
+        hideTypeChangeMenu(); // Hide type menu when context menu opens
     }
-    function hideContextMenu() { contextMenu.style.display = 'none'; }
+    function hideContextMenu() {
+        contextMenu.style.display = 'none'; 
+
+    }
 
     // --- Item Management ---
     function createAndAddItem(type, coords, presetData = null) {
         const newItemId = `item-${nextItemId++}`;
-        let element, itemData = {}, template;
+        let element; let itemData = {}; let template;
 
-        const templates = {
-            task: taskTemplate,
-            estimator: estimatorTemplate,
-            data: dataTemplate,
-            scribble: scribbleTemplate,
-            group: groupTemplate // NEW
-        };
-        template = templates[type];
-        if (!template) return null;
+        if (type === 'task') template = taskTemplate;
+        else if (type === 'estimator') template = estimatorTemplate;
+        else if (type === 'data') template = dataTemplate;
+        else if (type === 'scribble') template = scribbleTemplate;
+        else if (type === 'group') template = groupTemplate;
+        else if (type === 'knowledge-section') template = knowledgeSectionTemplate;
+        else if (type === 'knowledge-subsection') template = knowledgeSubsectionTemplate;
+        else if (type === 'knowledge-item') template = knowledgeItemTemplate;
+        else if (type === 'adr') template = adrTemplate;
+        else return null;
 
         if (type === 'estimator') {
-            const existingEstimator = Object.values(items).find(item => item.type === 'estimator');
-            if (existingEstimator) { alert(`Only one Estimator tile allowed.`); selectItem(existingEstimator.id); bringToFront(existingEstimator.id); return null; }
+             const existingEstimator = Object.values(items).find(item => item.type === 'estimator');
+             if (existingEstimator) { alert(`Only one Estimator tile allowed (ID: ${existingEstimator.id})`); selectItem(existingEstimator.id); bringToFront(existingEstimator.id); return null; }
         }
 
-        const node = template.content.cloneNode(true);
-        element = node.querySelector('.tile');
-        element.id = newItemId;
-
-        const spawnX = parseInt(coords?.pageX || coords?.x || currentPasteCoords.x);
-        const spawnY = parseInt(coords?.pageY || coords?.y || currentPasteCoords.y);
-        element.style.left = `${spawnX}px`;
-        element.style.top = `${spawnY}px`;
-        
+        const node = template.content.cloneNode(true); element = node.querySelector('.tile'); element.id = newItemId; element.style.width = `${DEFAULT_TILE_WIDTH}px`; element.style.height = `${DEFAULT_TILE_HEIGHT}px`;
+        const spawnX = parseInt(coords?.pageX || coords?.x || currentPasteCoords.x); const spawnY = parseInt(coords?.pageY || coords?.y || currentPasteCoords.y); element.style.left = `${spawnX}px`; element.style.top = `${spawnY}px`;
         const titleH3 = element.querySelector('.tile-title');
 
         if (type === 'task') {
-             /* ... (Task creation logic remains the same) ... */
-             itemData = { title: titleH3.textContent, description: '', complexity: 3, risk: 0.1, priority: 3, duration: 1 };
+            const complexitySelect = element.querySelector('.complexity'); fibonacciNumbers.forEach(num => { const option = document.createElement('option'); option.value = num; option.text = num; complexitySelect.appendChild(option); }); const descriptionP = element.querySelector('.description');
+            if (presetData) { titleH3.textContent = presetData.title || 'Preset Task'; if (presetData.description) { descriptionP.textContent = presetData.description; descriptionP.style.display = 'block'; } else { descriptionP.style.display = 'none'; } complexitySelect.value = presetData.complexity !== undefined ? presetData.complexity : 3; element.querySelector('.risk').value = presetData.risk !== undefined ? presetData.risk : 0.1; element.querySelector('.priority').value = presetData.priority !== undefined ? presetData.priority : 3; element.querySelector('.duration').value = presetData.duration !== undefined ? presetData.duration : 1; }
+            else { titleH3.textContent = 'General Task'; descriptionP.style.display = 'none'; complexitySelect.value = 3; }
+            itemData = { title: titleH3.textContent, description: descriptionP.textContent, complexity: complexitySelect.value, risk: element.querySelector('.risk').value, priority: element.querySelector('.priority').value, duration: element.querySelector('.duration').value };
         } else if (type === 'estimator') {
-             /* ... (Estimator creation logic remains the same) ... */
-             itemData = { title: titleH3.textContent, teamMembers: 5, workingHours: 8, overhead: 0.15, productivity: 0.85, learningCurve: 1.0, hoursPerStoryPoint: 4 };
+            titleH3.textContent = 'Project Estimator';
+            itemData = { title: titleH3.textContent, teamMembers: element.querySelector('#team-members').value, workingHours: element.querySelector('#working-hours').value, overhead: element.querySelector('#overhead').value, productivity: element.querySelector('#productivity').value, learningCurve: element.querySelector('#learning-curve').value, hoursPerStoryPoint: element.querySelector('#hours-per-story-point').value };
         } else if (type === 'data') {
-             /* ... (Data creation logic remains the same) ... */
-             itemData = { title: "Data", dataType: 'text', content: '' };
+            const imgEl = element.querySelector('.data-image'); const textEl = element.querySelector('.data-text'); itemData.dataType = presetData?.dataType || 'text'; itemData.content = presetData?.content || '';
+            if (itemData.dataType === 'image') { imgEl.src = itemData.content; imgEl.style.display = 'block'; textEl.style.display = 'none'; titleH3.textContent = presetData?.title || 'Pasted Image'; }
+            else { textEl.value = itemData.content; imgEl.style.display = 'none'; textEl.style.display = 'block'; titleH3.textContent = presetData?.title || 'Pasted Text'; }
+            itemData.title = titleH3.textContent;
         } else if (type === 'scribble') {
-             /* ... (Scribble creation logic remains the same) ... */
-             itemData = { title: "Scribble Pad", content: '' };
+             titleH3.textContent = presetData?.title || 'Scribble Pad'; const textEl = element.querySelector('.scribble-text'); textEl.value = presetData?.content || '';
+             itemData = { title: titleH3.textContent, content: textEl.value };
         } else if (type === 'group') {
-             // NEW: Group creation logic
-             titleH3.textContent = presetData?.title || 'New Group';
-             itemData = {
-                 title: titleH3.textContent,
-                 children: presetData?.children || [], // Store child IDs
-                 isExpanded: false
-             };
+            titleH3.textContent = presetData?.title || 'Group Workflow';
+            itemData = { title: titleH3.textContent, subItems: [], isExpanded: false };
+            groups[newItemId] = [];
+        } else if (type.startsWith('knowledge-') || type === 'adr') {
+            titleH3.textContent = presetData?.title || type.charAt(0).toUpperCase() + type.slice(1);
+            const contentEl = element.querySelector('.knowledge-content') || element.querySelector('.adr-topic');
+            if (contentEl) contentEl.value = presetData?.content || '';
+            itemData = { title: titleH3.textContent, content: contentEl ? contentEl.value : '' };
+            if (type === 'adr') {
+                itemData.code = element.querySelector('.adr-code')?.value || '';
+                itemData.category = element.querySelector('.adr-category')?.value || '';
+            }
         }
 
-        element.style.width = `${presetData?.width || DEFAULT_TILE_WIDTH}px`;
-        element.style.height = `${presetData?.height || DEFAULT_TILE_HEIGHT}px`;
-
         canvas.appendChild(element);
-        items[newItemId] = {
-            id: newItemId,
-            type: type,
-            x: spawnX, y: spawnY,
-            width: parseInt(element.style.width),
-            height: parseInt(element.style.height),
-            data: itemData,
-            element: element,
-            parentId: presetData?.parentId || null // NEW: For grouping
-        };
-
-        setupTileInteraction(element);
-        calculate();
-        selectItem(newItemId, false); // Select the new item, don't clear others yet
-        saveState();
-        return newItemId;
+        items[newItemId] = { id: newItemId, type: type, x: spawnX, y: spawnY, width: parseInt(element.style.width), height: parseInt(element.style.height), data: itemData, element: element, parentGroup: null };
+        setupTileInteraction(element); calculate(); selectItem(newItemId); saveState(); return newItemId;
     }
 
     function deleteItem(itemId) {
-        if (!items[itemId]) return;
-        const itemToDelete = items[itemId];
-
-        // NEW: If deleting a group, ungroup children first
-        if (itemToDelete.type === 'group' && itemToDelete.data.children.length > 0) {
-            // Move children out of the group before deleting the group
-            itemToDelete.data.children.forEach(childId => {
-                if(items[childId]) items[childId].parentId = null;
-            });
+        if (!items[itemId]) return; const itemElement = items[itemId].element;
+        if (items[itemId].type === 'group') {
+            groups[itemId].forEach(subId => deleteItem(subId));
+            delete groups[itemId];
         }
-        
-        const itemElement = itemToDelete.element;
-        links = links.filter(link => {
-            if (link.sourceId === itemId || link.targetId === itemId) {
-                const arrowElement = document.getElementById(`link-${link.id}`);
-                if (arrowElement) arrowElement.remove();
-                return false;
-            }
-            return true;
-        });
-
-        if (itemElement) itemElement.remove();
-        delete items[itemId];
-        
-        // Remove from selection
-        const selectionIndex = selectedItemIds.indexOf(itemId);
-        if (selectionIndex > -1) {
-            selectedItemIds.splice(selectionIndex, 1);
-        }
-        
-        updateArrows();
-        calculate();
-        saveState();
+        links = links.filter(link => { if (link.sourceId === itemId || link.targetId === itemId) { const arrowElement = document.getElementById(`link-${link.id}`); if (arrowElement) arrowElement.remove(); return false; } return true; });
+        if (itemElement) itemElement.remove(); delete items[itemId]; if (selectedItemId === itemId) selectedItemId = null;
+        Object.values(items).forEach(item => { if (item.parentGroup === itemId) deleteItem(item.id); });
+        updateArrows(); calculate(); saveState();
     }
-    
-    // --- Tile Interaction (MODIFIED FOR MULTI-SELECT AND GROUPS) ---
+
+    function createAssociatedTask(sourceId) {
+        if (!items[sourceId] || items[sourceId].type !== 'task') return; const sourceItem = items[sourceId]; const sourceElement = sourceItem.element; if (!sourceElement) return;
+        const newX = sourceItem.x; const sourceHeight = sourceItem.height || sourceElement.offsetHeight || DEFAULT_TILE_HEIGHT; const newY = sourceItem.y + sourceHeight + 40;
+        const targetId = createAndAddItem('task', { pageX: newX, pageY: newY });
+        if (targetId) { const linkId = `link-${nextLinkId++}`; links.push({ id: linkId, sourceId: sourceId, targetId: targetId }); updateArrows(); selectItem(targetId); saveState(); }
+    }
+
+    // --- Tile Interaction ---
     function setupTileInteraction(tileElement) {
         const itemId = tileElement.id;
         const headerElement = tileElement.querySelector('.tile-header');
-        
-        // --- Dragging ---
+        const titleElement = tileElement.querySelector('.tile-title');
+        const deleteBtn = tileElement.querySelector('.delete-btn');
+        const changeTypeBtn = tileElement.querySelector('.change-type-btn');
+        const descriptionElement = tileElement.querySelector('.description');
+
+        // Draggable (by header)
         interact(tileElement).draggable({
-            allowFrom: headerElement,
+            allowFrom: headerElement, inertia: false, modifiers: [interact.modifiers.restrictRect({ restriction: 'parent', endOnly: false })], autoScroll: true,
             listeners: {
-                start(event) {
-                    if (!selectedItemIds.includes(itemId)) {
-                        selectItem(itemId, event.shiftKey);
-                    }
-                    bringToFront(itemId);
-                    event.target.classList.add('dragging');
-                    if (headerElement) headerElement.style.cursor = 'grabbing';
-                },
+                start(event) { selectItem(itemId); bringToFront(itemId); event.target.classList.add('dragging'); if (headerElement) headerElement.style.cursor = 'grabbing'; },
                 move(event) {
-                    const groupMovements = {}; // To store movement for each group
-
-                    selectedItemIds.forEach(selectedId => {
-                        const targetItem = items[selectedId];
-                        if (!targetItem) return;
-
-                        let dx = event.dx;
-                        let dy = event.dy;
-                        
-                        // If part of a group, calculate movement relative to the group
-                        if(targetItem.parentId && items[targetItem.parentId]?.data.isExpanded) {
-                            if(!groupMovements[targetItem.parentId]) {
-                                groupMovements[targetItem.parentId] = { dx: 0, dy: 0, members: [] };
+                    const target = event.target; if (!items[itemId]) { event.interaction.stop(); return; } const item = items[itemId]; item.x += event.dx; item.y += event.dy;
+                    const canvasRect = canvas.getBoundingClientRect(); item.x = Math.max(0, Math.min(item.x, canvasRect.width - target.offsetWidth)); item.y = Math.max(0, Math.min(item.y, canvasRect.height - target.offsetHeight));
+                    target.style.left = `${item.x}px`; target.style.top = `${item.y}px`; 
+                    if (item.type === 'group' && item.data.isExpanded) {
+                        groups[itemId].forEach(subId => {
+                            const subItem = items[subId];
+                            if (subItem) {
+                                subItem.x += event.dx;
+                                subItem.y += event.dy;
+                                subItem.element.style.left = `${subItem.x}px`;
+                                subItem.element.style.top = `${subItem.y}px`;
                             }
-                            groupMovements[targetItem.parentId].members.push(targetItem);
-                            // We will process group moves after single node moves.
-                            return;
-                        }
-
-                        targetItem.x += dx;
-                        targetItem.y += dy;
-                        targetItem.element.style.left = `${targetItem.x}px`;
-                        targetItem.element.style.top = `${targetItem.y}px`;
-
-                        // If dragging a group, move its children too
-                        if (targetItem.type === 'group' && targetItem.data.isExpanded) {
-                            targetItem.data.children.forEach(childId => {
-                                const childItem = items[childId];
-                                if(childItem) {
-                                    childItem.x += dx;
-                                    childItem.y += dy;
-                                    childItem.element.style.left = `${childItem.x}px`;
-                                    childItem.element.style.top = `${childItem.y}px`;
-                                }
-                            });
-                        }
-                    });
+                        });
+                    }
                     updateArrows();
                 },
-                end(event) {
-                    event.target.classList.remove('dragging');
-                    if (headerElement) headerElement.style.cursor = 'grab';
-                    saveState();
-                }
+                end(event) { event.target.classList.remove('dragging'); if (headerElement) headerElement.style.cursor = 'grab'; if (items[itemId]) saveState(); }
             }
         });
 
-        // --- Resizing ---
-        interact(tileElement).resizable({ /* ... (Unchanged) ... */ });
+        // Resizable (by handle)
+        interact(tileElement).resizable({
+            edges: { left: false, right: true, bottom: true, top: false }, allowFrom: '.resizer',
+            listeners: {
+                start(event) { selectItem(itemId); bringToFront(itemId); event.target.classList.add('resizing'); },
+                move: function (event) {
+                    if (!items[itemId]) return; let target = event.target; let newWidth = Math.max(200, event.rect.width); let newHeight = Math.max(100, event.rect.height);
+                    target.style.width = `${newWidth}px`; target.style.height = `${newHeight}px`; items[itemId].width = newWidth; items[itemId].height = newHeight;
+                    const canvasRect = canvas.getBoundingClientRect(); items[itemId].x = Math.min(items[itemId].x, canvasRect.width - newWidth); items[itemId].y = Math.min(items[itemId].y, canvasRect.height - newHeight);
+                    target.style.left = `${items[itemId].x}px`; target.style.top = `${items[itemId].y}px`; updateArrows();
+                },
+                end: function (event) { event.target.classList.remove('resizing'); if (items[itemId]) { items[itemId].width = parseInt(event.target.style.width); items[itemId].height = parseInt(event.target.style.height); saveState(); } }
+            },
+            modifiers: [interact.modifiers.restrictSize({ min: { width: 200, height: 100 } }), interact.modifiers.restrictEdges({ outer: 'parent' })], inertia: false
+        });
 
-        // --- Tile Click (Selection) ---
+        // Tile Click (Selection)
         tileElement.addEventListener('click', (e) => {
-            if (e.target.closest('.tile-header') || e.target.closest('.resizer') || e.target.matches('input, select, textarea, label, button, .delete-btn, .change-type-btn')) {
-                 if (!e.target.classList.contains('delete-btn') && !e.target.classList.contains('change-type-btn')) return;
+            if (e.target.closest('.tile-header') || e.target.closest('.resizer') || e.target.matches('input, select, textarea, label, button, .delete-btn, .change-type-btn') || tileElement.classList.contains('dragging') || tileElement.classList.contains('resizing')) {
+                 if (!e.target.classList.contains('delete-btn') && !e.target.classList.contains('change-type-btn')) { return; }
             }
-            selectItem(itemId, e.shiftKey);
-            hideContextMenu(); hideTypeChangeMenu(); e.stopPropagation();
+            selectItem(itemId); hideContextMenu(); hideTypeChangeMenu(); e.stopPropagation();
         });
 
-        // --- Double Click to Expand/Collapse Group ---
-        if (items[itemId]?.type === 'group') {
-            tileElement.addEventListener('dblclick', (e) => {
+        // Double-click for group expand/collapse
+        tileElement.addEventListener('dblclick', (e) => {
+            if (items[itemId].type === 'group') {
+                toggleGroup(itemId);
                 e.stopPropagation();
-                toggleGroupExpansion(itemId);
+            }
+        });
+
+        // Delete Button
+        if (deleteBtn) {
+             deleteBtn.addEventListener('click', (e) => {
+                 e.stopPropagation(); e.preventDefault(); const itemToDelete = items[itemId];
+                 if (itemToDelete) { const deleteMessage = `Delete ${itemToDelete.type} "${itemToDelete.data?.title || itemToDelete.id}"?`; if (confirm(deleteMessage)) { deleteItem(itemId); } }
+                 else { console.error("Could not find item to delete:", itemId); }
+             });
+             deleteBtn.addEventListener('mousedown', e => e.stopPropagation());
+         }
+
+        // Rename on Double Click Title
+        if (titleElement) {
+             titleElement.addEventListener('dblclick', (e) => {
+                 e.stopPropagation(); titleElement.setAttribute('contenteditable', 'true'); titleElement.focus(); const range = document.createRange(); range.selectNodeContents(titleElement); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+                 const saveRename = () => { titleElement.setAttribute('contenteditable', 'false'); titleElement.removeEventListener('blur', saveRename); titleElement.removeEventListener('keydown', handleKey); if (items[itemId]) { const newTitle = titleElement.textContent.trim(); if (newTitle) { items[itemId].data.title = newTitle; saveState(); calculate(); } else { titleElement.textContent = items[itemId].data.title || 'Untitled'; } } };
+                 const handleKey = (keyEvent) => { if (keyEvent.key === 'Enter') { keyEvent.preventDefault(); saveRename(); } else if (keyEvent.key === 'Escape') { titleElement.textContent = items[itemId]?.data?.title || 'Untitled'; saveRename(); } keyEvent.stopPropagation(); };
+                 titleElement.addEventListener('blur', saveRename); titleElement.addEventListener('keydown', handleKey);
+             });
+             titleElement.addEventListener('mousedown', e => e.stopPropagation());
+         }
+
+        // Change Type Button
+        if (changeTypeBtn) {
+            changeTypeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); const item = items[itemId]; if (!item) return;
+                if (item.type === 'estimator') { console.log("Cannot change Estimator type."); return; }
+                showTypeChangeMenu(itemId, changeTypeBtn);
             });
-        }
-        
-        // Other listeners (delete, rename, etc.)
-        /* ... (These listeners remain largely the same, but now act on the specific tile) ... */
-    }
-
-    function bringToFront(itemId) { /* ... (Unchanged) ... */ }
-    function updateItemData(itemId) { /* ... (Unchanged) ... */ }
-
-    // MODIFIED: Selection Logic for Multi-Select
-    function selectItem(itemId, isMultiSelect = false) {
-        if (!isMultiSelect) {
-            deselectAllItems();
+            changeTypeBtn.addEventListener('mousedown', e => e.stopPropagation());
         }
 
-        const index = selectedItemIds.indexOf(itemId);
-        if (index > -1) {
-            // Already selected. If multi-selecting, deselect it.
-            if (isMultiSelect) {
-                items[itemId]?.element.classList.remove('selected');
-                selectedItemIds.splice(index, 1);
-            }
-        } else {
-            // Not selected. Add to selection.
-            if (items[itemId]?.element) {
-                items[itemId].element.classList.add('selected');
-                selectedItemIds.push(itemId);
-                bringToFront(itemId);
-            }
-        }
-    }
+        if (descriptionElement && tileElement.classList.contains('task')) {
+            descriptionElement.addEventListener('dblclick', (e) => {
+                e.stopPropagation(); // Prevent tile click/drag
 
-    function deselectAllItems() {
-        selectedItemIds.forEach(id => {
-            items[id]?.element?.classList.remove('selected');
-        });
-        selectedItemIds = [];
-    }
-    
-    // --- NEW: Grouping Logic ---
-    function createGroupFromSelection() {
-        if (selectedItemIds.length <= 1) return;
-
-        let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-        
-        // Find bounding box of selected items
-        selectedItemIds.forEach(id => {
-            const item = items[id];
-            if (item) {
-                minX = Math.min(minX, item.x);
-                minY = Math.min(minY, item.y);
-                maxX = Math.max(maxX, item.x + item.width);
-                maxY = Math.max(maxY, item.y + item.height);
-            }
-        });
-
-        const groupWidth = maxX - minX + 80; // Add padding
-        const groupHeight = maxY - minY + 80;
-        const groupX = minX - 40;
-        const groupY = minY - 40;
-
-        const groupPreset = {
-            title: "New Group",
-            children: [...selectedItemIds],
-            width: DEFAULT_TILE_WIDTH, // Start collapsed
-            height: DEFAULT_TILE_HEIGHT,
-        };
-
-        const groupId = createAndAddItem('group', { pageX: groupX, pageY: groupY }, groupPreset);
-
-        // Assign parentId to children and hide them
-        selectedItemIds.forEach(childId => {
-            if (items[childId]) {
-                items[childId].parentId = groupId;
-                items[childId].element.classList.add('hidden-child');
-            }
-        });
-        
-        deselectAllItems();
-        selectItem(groupId);
-        updateArrows();
-        saveState();
-    }
-
-    function toggleGroupExpansion(groupId) {
-        const group = items[groupId];
-        if (!group || group.type !== 'group') return;
-
-        group.data.isExpanded = !group.data.isExpanded;
-        const groupElement = group.element;
-
-        if (group.data.isExpanded) {
-            // EXPAND
-            groupElement.classList.add('expanded');
-            
-            // Calculate bounding box of children to resize group container
-            let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-            group.data.children.forEach(childId => {
-                const child = items[childId];
-                if (child) {
-                    child.element.classList.remove('hidden-child');
-                    minX = Math.min(minX, child.x);
-                    minY = Math.min(minY, child.y);
-                    maxX = Math.max(maxX, child.x + child.width);
-                    maxY = Math.max(maxY, child.y + child.height);
+                // If description was hidden because it was empty, show it first
+                if (window.getComputedStyle(descriptionElement).display === 'none') {
+                    descriptionElement.style.display = 'block';
                 }
-            });
-            
-            group.width = maxX - minX + 80;
-            group.height = maxY - minY + 80;
-            group.x = minX - 40;
-            group.y = minY - 40;
 
-            groupElement.style.width = `${group.width}px`;
-            groupElement.style.height = `${group.height}px`;
-            groupElement.style.left = `${group.x}px`;
-            groupElement.style.top = `${group.y}px`;
+                const originalText = descriptionElement.textContent;
+                descriptionElement.setAttribute('contenteditable', 'true');
+                descriptionElement.classList.add('editing'); // Add editing style
+                descriptionElement.focus();
 
-        } else {
-            // COLLAPSE
-            groupElement.classList.remove('expanded');
-            group.data.children.forEach(childId => {
-                items[childId]?.element.classList.add('hidden-child');
+                // Select text (optional, but helpful)
+                try {
+                    const range = document.createRange();
+                    range.selectNodeContents(descriptionElement);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } catch (selectError) {
+                    console.warn("Could not select text in description:", selectError);
+                }
+
+
+                // Function to stop editing and potentially save
+                const stopEditing = (saveChanges = true) => {
+                    descriptionElement.setAttribute('contenteditable', 'false');
+                    descriptionElement.classList.remove('editing');
+                    descriptionElement.removeEventListener('blur', handleBlur);
+                    descriptionElement.removeEventListener('keydown', handleKey);
+
+                    const newText = descriptionElement.textContent.trim();
+
+                    if (saveChanges) {
+                        if (items[itemId] && items[itemId].type === 'task') {
+                            items[itemId].data.description = newText;
+                            // Hide description again if it becomes empty after editing
+                            descriptionElement.style.display = newText ? 'block' : 'none';
+                            saveState();
+                            // Optional: Recalculate if description affects anything (unlikely)
+                            // calculate();
+                        }
+                    } else {
+                        // Revert on Escape
+                        descriptionElement.textContent = originalText;
+                        descriptionElement.style.display = originalText.trim() ? 'block' : 'none';
+                    }
+                };
+
+                // Handlers for blur and keydown
+                const handleBlur = () => {
+                    stopEditing(true); // Save on blur
+                };
+
+                const handleKey = (keyEvent) => {
+                    keyEvent.stopPropagation(); // Stop keydown from bubbling
+                    if (keyEvent.key === 'Escape') {
+                        stopEditing(false); // Cancel on Escape
+                    }
+                    // We don't stop editing on Enter for description, allow new lines
+                };
+
+                // Add temporary listeners
+                descriptionElement.addEventListener('blur', handleBlur, { once: true }); // Use once for simplicity
+                descriptionElement.addEventListener('keydown', handleKey); // Need to remove this one manually
             });
-            // Restore to a default size
-            group.width = DEFAULT_TILE_WIDTH;
-            group.height = DEFAULT_TILE_HEIGHT;
-            groupElement.style.width = `${group.width}px`;
-            groupElement.style.height = `${group.height}px`;
+
+            // Prevent drag start when interacting with description
+             descriptionElement.addEventListener('mousedown', e => {
+                 // Only stop propagation if it's currently editable
+                 if (descriptionElement.classList.contains('editing')) {
+                    e.stopPropagation();
+                 }
+             });
         }
-        
+
+        // Content Area Listeners (Initial Setup)
+        setupContentAreaListeners(tileElement, itemId);
+    }
+
+    // Sets up listeners for elements *within* the tile-content area
+    function setupContentAreaListeners(tileElement, itemId) {
+        const contentArea = tileElement.querySelector('.tile-content');
+        if (!contentArea) return;
+        const item = items[itemId];
+        if (!item) return;
+
+        // --- Event Delegation for General Input Changes ---
+        // Use 'change' for select, final input values; 'input' for immediate textarea updates
+        contentArea.addEventListener('change', (e) => {
+            if (e.target.matches('input, select')) { updateItemData(itemId); calculate(); saveState(); }
+        });
+        contentArea.addEventListener('input', (e) => {
+            if (e.target.matches('textarea')) { updateItemData(itemId); /* Maybe debounce saveState */ saveState(); }
+        });
+
+        // --- Specific Listeners (Example: Scribble Textarea - handled by delegation above) ---
+        // Note: If specific logic beyond updating `item.data` is needed, add it here based on `item.type`.
+
+        // --- Prevent Drag/Resize from Content ---
+        contentArea.addEventListener('mousedown', e => { if (e.target.matches('input, select, textarea, label, button')) e.stopPropagation(); });
+        contentArea.addEventListener('click', e => { if (e.target.matches('input, select, textarea, label, button')) e.stopPropagation(); });
+        contentArea.addEventListener('keydown', e => { if (e.target.matches('input, select, textarea')) e.stopPropagation(); });
+    }
+
+
+    function bringToFront(itemId) {
+         if (!items[itemId] || !items[itemId].element) return; const element = items[itemId].element; let maxZ = 10;
+         Object.values(items).forEach(item => { if (item.element && item.id !== itemId) { const z = parseInt(window.getComputedStyle(item.element).zIndex || '10'); if (!isNaN(z) && z >= maxZ) maxZ = z + 1; } }); element.style.zIndex = maxZ;
+     }
+
+    // Update item data based on inputs (called on change/input)
+    function updateItemData(itemId) {
+        if (!items[itemId]) return; const item = items[itemId]; const element = item.element; if (!element) return;
+        try {
+            // Title updated separately by dblclick handler
+            if (item.type === 'task') {
+                item.data.description = element.querySelector('.description')?.textContent || ''; // Read description P tag if needed
+                item.data.complexity = element.querySelector('.complexity')?.value;
+                item.data.risk = element.querySelector('.risk')?.value;
+                item.data.priority = element.querySelector('.priority')?.value;
+                item.data.duration = element.querySelector('.duration')?.value;
+            } else if (item.type === 'estimator') {
+                 item.data.teamMembers = element.querySelector('#team-members')?.value; item.data.workingHours = element.querySelector('#working-hours')?.value; item.data.overhead = element.querySelector('#overhead')?.value; item.data.productivity = element.querySelector('#productivity')?.value; item.data.learningCurve = element.querySelector('#learning-curve')?.value; item.data.hoursPerStoryPoint = element.querySelector('#hours-per-story-point')?.value;
+            } else if (item.type === 'data') {
+                 if(item.data.dataType === 'text') { item.data.content = element.querySelector('.data-text')?.value || ''; } // Update text content
+                 // Image content updated on paste
+            } else if (item.type === 'scribble') {
+                 item.data.content = element.querySelector('.scribble-text')?.value || ''; // Update scribble content
+            } else if (item.type.startsWith('knowledge-')) {
+                item.data.content = element.querySelector('.knowledge-content')?.value || '';
+            } else if (item.type === 'adr') {
+                item.data.code = element.querySelector('.adr-code')?.value || '';
+                item.data.category = element.querySelector('.adr-category')?.value || '';
+                item.data.topic = element.querySelector('.adr-topic')?.value || '';
+            }
+        } catch (error) { console.error("Error updating item data for", itemId, error); }
+    }
+
+    function selectItem(itemId) {
+        if (selectedItemId === itemId) return; deselectAllItems();
+        if (items[itemId] && items[itemId].element) { items[itemId].element.classList.add('selected'); selectedItemId = itemId; bringToFront(itemId); }
+        else { selectedItemId = null; }
+    }
+    function deselectAllItems() {
+        if (selectedItemId && items[selectedItemId] && items[selectedItemId].element) { items[selectedItemId].element.classList.remove('selected'); }
+        selectedItemId = null;
+    }
+
+    // --- Type Change Menu Logic ---
+    function showTypeChangeMenu(itemId, buttonElement) {
+        const item = items[itemId]; if (!item) return; activeTypeChangeMenuTarget = itemId;
+        const availableTypes = ['task', 'data', 'scribble', 'group', 'knowledge-section', 'knowledge-subsection', 'knowledge-item', 'adr']; const currentType = item.type;
+        const menuList = typeChangeMenu.querySelector('ul'); menuList.innerHTML = '';
+
+        availableTypes.forEach(typeOption => {
+            const li = document.createElement('li'); let typeLabel = typeOption.charAt(0).toUpperCase() + typeOption.slice(1);
+            if (typeOption === 'data') typeLabel = 'Text/Image'; if (typeOption === 'scribble') typeLabel = 'Scribble Pad';
+            li.textContent = typeLabel; li.dataset.itemId = itemId; li.dataset.newType = typeOption;
+            if (typeOption === currentType) { li.classList.add('disabled'); } else { li.addEventListener('click', handleTypeChangeSelection); }
+            menuList.appendChild(li);
+        });
+
+        const btnRect = buttonElement.getBoundingClientRect(); const canvasRect = canvas.getBoundingClientRect();
+        let top = btnRect.bottom - canvasRect.top + 2; /* Add small gap */ let left = btnRect.left - canvasRect.left;
+        typeChangeMenu.style.display = 'block'; const menuWidth = typeChangeMenu.offsetWidth; const menuHeight = typeChangeMenu.offsetHeight;
+        if (left + menuWidth > canvasRect.width - 5) { left = btnRect.right - canvasRect.left - menuWidth; } /* Adjust right */
+        if (top + menuHeight > canvasRect.height - 5) { top = btnRect.top - canvasRect.top - menuHeight - 2; } /* Position above */
+        typeChangeMenu.style.top = `${top}px`; typeChangeMenu.style.left = `${left}px`;
+
+        setTimeout(() => { document.addEventListener('click', hideTypeChangeMenuOnClickOutside, { capture: true, once: true }); document.addEventListener('keydown', hideTypeChangeMenuOnEscape, { capture: true, once: true }); }, 0);
+        hideContextMenu(); // Hide context menu if open
+    }
+
+    function handleTypeChangeSelection(e) {
+         e.stopPropagation(); const targetLi = e.currentTarget; const itemId = targetLi.dataset.itemId; const newType = targetLi.dataset.newType;
+         if (!itemId || !newType || targetLi.classList.contains('disabled')) { console.error("Invalid type change selection."); hideTypeChangeMenu(); return; }
+         changeTileType(itemId, newType); hideTypeChangeMenu();
+    }
+
+    function hideTypeChangeMenu() {
+        if (typeChangeMenu.style.display !== 'none') {
+             typeChangeMenu.style.display = 'none'; activeTypeChangeMenuTarget = null;
+             document.removeEventListener('click', hideTypeChangeMenuOnClickOutside, { capture: true }); document.removeEventListener('keydown', hideTypeChangeMenuOnEscape, { capture: true });
+        }
+    }
+
+    function hideTypeChangeMenuOnClickOutside(e) {
+         if (!typeChangeMenu.contains(e.target)) {
+             const activeItem = activeTypeChangeMenuTarget ? items[activeTypeChangeMenuTarget] : null; const activeBtn = activeItem ? activeItem.element.querySelector('.change-type-btn') : null;
+             if (!activeBtn || !activeBtn.contains(e.target)) { hideTypeChangeMenu(); }
+             else { setTimeout(() => { document.addEventListener('click', hideTypeChangeMenuOnClickOutside, { capture: true, once: true }); document.addEventListener('keydown', hideTypeChangeMenuOnEscape, { capture: true, once: true }); }, 0); }
+         } else { setTimeout(() => { document.addEventListener('click', hideTypeChangeMenuOnClickOutside, { capture: true, once: true }); document.addEventListener('keydown', hideTypeChangeMenuOnEscape, { capture: true, once: true }); }, 0); }
+    }
+
+     function hideTypeChangeMenuOnEscape(e) {
+         if (e.key === 'Escape') { hideTypeChangeMenu(); }
+         else { setTimeout(() => { document.addEventListener('keydown', hideTypeChangeMenuOnEscape, { capture: true, once: true }); document.addEventListener('click', hideTypeChangeMenuOnClickOutside, { capture: true, once: true }); }, 0); }
+     }
+
+    // Core function to change a tile's type
+    function changeTileType(itemId, newType) {
+        const item = items[itemId]; if (!item || !item.element || item.type === newType) return;
+        if (item.type === 'estimator') { console.warn("Cannot change Estimator type."); return; }
+
+        const preservedData = { id: item.id, x: item.x, y: item.y, width: item.width, height: item.height, title: item.data?.title || `Changed to ${newType}`, };
+        const contentElement = item.element.querySelector('.tile-content'); if (!contentElement) return;
+        contentElement.innerHTML = ''; // Clear old content
+
+        item.element.classList.remove('task', 'data', 'scribble', 'estimator', 'group', 'knowledge-section', 'knowledge-subsection', 'knowledge-item', 'adr'); item.element.classList.add(newType);
+
+        let newTemplate; let newItemData = { title: preservedData.title };
+
+        switch (newType) {
+            case 'task':
+                newTemplate = taskTemplate; const taskNode = newTemplate.content.querySelector('.tile-content').cloneNode(true);
+                const complexitySelect = taskNode.querySelector('.complexity'); fibonacciNumbers.forEach(num => { const option = document.createElement('option'); option.value = num; option.text = num; complexitySelect.appendChild(option); });
+                complexitySelect.value = 3; taskNode.querySelector('.risk').value = 0.1; taskNode.querySelector('.priority').value = 3; taskNode.querySelector('.duration').value = 1; taskNode.querySelector('.description').style.display = 'none'; taskNode.querySelector('.description').textContent = '';
+                while (taskNode.childNodes.length > 0) { contentElement.appendChild(taskNode.childNodes[0]); }
+                newItemData = { ...newItemData, description: '', complexity: 3, risk: 0.1, priority: 3, duration: 1 };
+                break;
+            case 'data': // Defaults to Text when changing type
+                newTemplate = dataTemplate; const dataNode = newTemplate.content.querySelector('.tile-content').cloneNode(true);
+                dataNode.querySelector('.data-image').style.display = 'none'; dataNode.querySelector('.data-image').src = '';
+                dataNode.querySelector('.data-text').style.display = 'block'; dataNode.querySelector('.data-text').value = '';
+                while (dataNode.childNodes.length > 0) { contentElement.appendChild(dataNode.childNodes[0]); }
+                newItemData = { ...newItemData, dataType: 'text', content: '' };
+                break;
+            case 'scribble':
+                 newTemplate = scribbleTemplate; const scribbleNode = newTemplate.content.querySelector('.tile-content').cloneNode(true);
+                 scribbleNode.querySelector('.scribble-text').value = '';
+                 while (scribbleNode.childNodes.length > 0) { contentElement.appendChild(scribbleNode.childNodes[0]); }
+                 newItemData = { ...newItemData, content: '' };
+                break;
+            case 'group':
+                newTemplate = groupTemplate; const groupNode = newTemplate.content.querySelector('.group-content').cloneNode(true);
+                contentElement.appendChild(groupNode);
+                newItemData = { ...newItemData, subItems: [], isExpanded: false };
+                groups[itemId] = [];
+                break;
+            case 'knowledge-section':
+            case 'knowledge-subsection':
+            case 'knowledge-item':
+                newTemplate = type === 'knowledge-section' ? knowledgeSectionTemplate : type === 'knowledge-subsection' ? knowledgeSubsectionTemplate : knowledgeItemTemplate;
+                const knowledgeNode = newTemplate.content.querySelector('.tile-content').cloneNode(true);
+                knowledgeNode.querySelector('.knowledge-content').value = '';
+                while (knowledgeNode.childNodes.length > 0) { contentElement.appendChild(knowledgeNode.childNodes[0]); }
+                newItemData = { ...newItemData, content: '' };
+                break;
+            case 'adr':
+                newTemplate = adrTemplate; const adrNode = newTemplate.content.querySelector('.tile-content').cloneNode(true);
+                while (adrNode.childNodes.length > 0) { contentElement.appendChild(adrNode.childNodes[0]); }
+                newItemData = { ...newItemData, code: '', category: '', topic: '' };
+                break;
+            default: console.error("Unhandled type in changeTileType:", newType); return;
+        }
+
+        item.type = newType; item.data = newItemData;
+        const titleH3 = item.element.querySelector('.tile-title'); if (titleH3) titleH3.textContent = preservedData.title;
+
+        // Re-attach listeners for the *new* content
+        setupContentAreaListeners(item.element, itemId);
+
+        calculate(); saveState(); updateArrows();
+    }
+
+    // --- Group Workflow Logic ---
+    function toggleGroup(groupId) {
+        const groupItem = items[groupId];
+        if (!groupItem || groupItem.type !== 'group') return;
+        const groupElement = groupItem.element;
+        const isExpanded = !groupItem.data.isExpanded;
+        groupItem.data.isExpanded = isExpanded;
+        groupElement.classList.toggle('collapsed', !isExpanded);
+        groupElement.classList.toggle('expanded', isExpanded);
+        const groupContent = groupElement.querySelector('.group-content');
+        groupContent.style.display = isExpanded ? 'block' : 'none';
+
+        groups[groupId].forEach(subId => {
+            const subItem = items[subId];
+            if (subItem) {
+                subItem.element.style.display = isExpanded ? 'flex' : 'none';
+                if (isExpanded) {
+                    // Position sub-items relative to group content
+                    const groupRect = groupContent.getBoundingClientRect();
+                    subItem.element.style.left = `${subItem.x - groupItem.x}px`;
+                    subItem.element.style.top = `${subItem.y - groupItem.y - 40}px`; // Adjust for header
+                    groupContent.appendChild(subItem.element);
+                } else {
+                    // Move back to canvas when collapsed
+                    subItem.element.style.left = `${subItem.x}px`;
+                    subItem.element.style.top = `${subItem.y}px`;
+                    canvas.appendChild(subItem.element);
+                }
+            }
+        });
+
         updateArrows();
         saveState();
     }
 
-
-    // --- Type Change Logic ---
-    /* ... (This section remains largely the same) ... */
-
-    // --- Arrow Drawing (MODIFIED FOR GROUPS) ---
-    function updateArrows() {
-        svgLayer.querySelectorAll('.arrow').forEach(arrow => arrow.remove());
-        const canvasRect = canvas.getBoundingClientRect();
-
-        links.forEach(link => {
-            let sourceItem = items[link.sourceId];
-            let targetItem = items[link.targetId];
-            if (!sourceItem || !targetItem) return;
-
-            // NEW: Remap to parent group if child is in a collapsed group
-            if (sourceItem.parentId && !items[sourceItem.parentId]?.data.isExpanded) {
-                sourceItem = items[sourceItem.parentId];
-            }
-            if (targetItem.parentId && !items[targetItem.parentId]?.data.isExpanded) {
-                targetItem = items[targetItem.parentId];
-            }
-
-            // If a link is purely internal to a collapsed group, don't draw it
-            if (sourceItem === targetItem) return;
-
-            if (!sourceItem || !targetItem || !sourceItem.element || !targetItem.element) return;
-            
-            const sourceRect = sourceItem.element.getBoundingClientRect();
-            const targetRect = targetItem.element.getBoundingClientRect();
-            
-            // ... the rest of getEdgePoint logic remains the same
-            const sourceCenter = getElementCenter(sourceItem.element, canvasRect);
-            const targetCenter = getElementCenter(targetItem.element, canvasRect);
-            const dx = targetCenter.x - sourceCenter.x;
-            const dy = targetCenter.y - sourceCenter.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            if (len < 1) return;
-            const startPoint = getEdgePoint(sourceRect, dx, dy, canvasRect);
-            const endPoint = getEdgePoint(targetRect, -dx, -dy, canvasRect);
-            // ... path drawing logic remains the same
-            const pathData = `M ${startPoint.x},${startPoint.y} L ${endPoint.x},${endPoint.y}`;
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', pathData);
-            path.setAttribute('class', 'arrow');
-            path.setAttribute('id', `link-${link.id}`);
-            svgLayer.appendChild(path);
-        });
+    // Function to add item to group (call this when dragging item into group or via UI)
+    function addToGroup(groupId, itemId) {
+        if (!groups[groupId] || items[itemId].parentGroup) return;
+        groups[groupId].push(itemId);
+        items[itemId].parentGroup = groupId;
+        if (items[groupId].data.isExpanded) {
+            const groupContent = items[groupId].element.querySelector('.group-content');
+            groupContent.appendChild(items[itemId].element);
+            // Adjust position relative to group
+            items[itemId].x -= items[groupId].x;
+            items[itemId].y -= items[groupId].y + 40;
+            items[itemId].element.style.left = `${items[itemId].x}px`;
+            items[itemId].element.style.top = `${items[itemId].y}px`;
+        } else {
+            items[itemId].element.style.display = 'none';
+        }
+        saveState();
     }
 
-    function getElementCenter(element, canvasRect) { /* ... (Unchanged) ... */ }
-    function getEdgePoint(rect, dx, dy, canvasRect) { /* ... (Unchanged) ... */ }
+    // --- Arrow Drawing ---
+    function getElementCenter(element, canvasRect) { if (!element) return { x: 0, y: 0 }; const rect = element.getBoundingClientRect(); return { x: rect.left - canvasRect.left + rect.width / 2, y: rect.top - canvasRect.top + rect.height / 2 }; }
+    function getEdgePoint(rect, dx, dy, canvasRect) { const cx = rect.left - canvasRect.left + rect.width / 2; const cy = rect.top - canvasRect.top + rect.height / 2; const absDx = Math.abs(dx); const absDy = Math.abs(dy); let edgeX, edgeY; if (absDx === 0 && absDy === 0) return { x: cx, y: cy }; const width = rect.width || 1; const height = rect.height || 1; const ratio = height / width; if (absDy < absDx * ratio) { if (dx > 0) { edgeX = rect.left - canvasRect.left + width; edgeY = cy + dy * (width / 2) / absDx; } else { edgeX = rect.left - canvasRect.left; edgeY = cy - dy * (width / 2) / absDx; } } else { if (dy > 0) { edgeX = cx + dx * (height / 2) / absDy; edgeY = rect.top - canvasRect.top + height; } else { edgeX = cx - dx * (height / 2) / absDy; edgeY = rect.top - canvasRect.top; } } return { x: edgeX, y: edgeY }; }
+    function updateArrows() { svgLayer.querySelectorAll('.arrow').forEach(arrow => arrow.remove()); const canvasRect = canvas.getBoundingClientRect(); links.forEach(link => { const sourceItem = items[link.sourceId]; const targetItem = items[link.targetId]; if (!sourceItem || !targetItem || !sourceItem.element || !targetItem.element || sourceItem.element.style.display === 'none' || targetItem.element.style.display === 'none') return; const sourceRect = sourceItem.element.getBoundingClientRect(); const targetRect = targetItem.element.getBoundingClientRect(); const sourceCenter = getElementCenter(sourceItem.element, canvasRect); const targetCenter = getElementCenter(targetItem.element, canvasRect); const dx = targetCenter.x - sourceCenter.x; const dy = targetCenter.y - sourceCenter.y; const len = Math.sqrt(dx * dx + dy * dy); if (len < 1) return; const startPoint = getEdgePoint(sourceRect, dx, dy, canvasRect); const endPoint = getEdgePoint(targetRect, -dx, -dy, canvasRect); const nx = dx / len; const ny = dy / len; const offset = MARKER_WIDTH * 1.5; const lineEndX = endPoint.x - nx * offset; const lineEndY = endPoint.y - ny * offset; const pathData = `M ${startPoint.x},${startPoint.y} L ${lineEndX},${lineEndY}`; const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', pathData); path.setAttribute('class', 'arrow'); path.setAttribute('id', `link-${link.id}`); svgLayer.appendChild(path); }); }
 
     // --- Calculation ---
-    function calculate() { /* ... (Unchanged) ... */ }
-    function updateEstimatorDisplay(results, estimatorElement = null) { /* ... (Unchanged) ... */ }
+    function calculate() { const estimatorItem = Object.values(items).find(item => item.type === 'estimator'); if (estimatorItem) { updateItemData(estimatorItem.id); } else { updateEstimatorDisplay(null); return; } let totalAdjustedStoryPoints = 0; let totalBaseStoryPoints = 0; let validTaskCount = 0; Object.values(items).filter(item => item.type === 'task' && item.element.style.display !== 'none').forEach(taskItem => { const data = taskItem.data; const complexity = parseFloat(data.complexity); const risk = parseFloat(data.risk); const duration = parseFloat(data.duration); if (isNaN(complexity) || isNaN(risk) || isNaN(duration) || complexity <= 0 || risk < 0 || risk > 1 || duration <= 0) return; validTaskCount++; const riskAdjustment = risk; const durationUncertainty = 0.1 * Math.log(1 + Math.max(0, duration)); const Fi = (1 + riskAdjustment) * (1 + durationUncertainty); const adjustedStoryPoints = complexity * Fi; totalBaseStoryPoints += complexity; const baseTestFactor = 0.15; const riskTestFactor = 0.20; const testingEffort = adjustedStoryPoints * (baseTestFactor + riskTestFactor * risk); const taskTotalPoints = adjustedStoryPoints + testingEffort; totalAdjustedStoryPoints += taskTotalPoints; }); const R = parseInt(estimatorItem.data.teamMembers || 0); const D = parseFloat(estimatorItem.data.workingHours || 0); const O = parseFloat(estimatorItem.data.overhead || 0); const P = parseFloat(estimatorItem.data.productivity || 0); const L = parseFloat(estimatorItem.data.learningCurve || 0); const H = parseFloat(estimatorItem.data.hoursPerStoryPoint || 0); const efficiencyFactor = (O >= 0 && O < 1) ? 1 - O : 0; const effectiveHoursPerDay = R * D * efficiencyFactor * P * L; let teamVelocity = 0; let durationText = "N/A"; if (H > 0 && effectiveHoursPerDay > 0) { teamVelocity = effectiveHoursPerDay / H; } if (totalAdjustedStoryPoints > 0 && teamVelocity > 0) { const totalDuration = totalAdjustedStoryPoints / teamVelocity; durationText = totalDuration.toFixed(1); } else if (validTaskCount === 0 && Object.values(items).some(item => item.type === 'task')) { durationText = "No Valid Tasks"; } else if (validTaskCount > 0 && totalAdjustedStoryPoints <= 0) { durationText = "Check Task Inputs"; } else if (totalAdjustedStoryPoints > 0 && teamVelocity <= 0) { durationText = "Check Team Factors"; } updateEstimatorDisplay({ baseSP: totalBaseStoryPoints, adjSP: totalAdjustedStoryPoints, velocity: teamVelocity, duration: durationText }, estimatorItem.element); }
+    function updateEstimatorDisplay(results, estimatorElement = null) { if (!estimatorElement) { const estimatorItem = Object.values(items).find(item => item.type === 'estimator'); estimatorElement = estimatorItem?.element; } if (!estimatorElement) return; estimatorElement.querySelector('#result-base-sp').textContent = results ? results.baseSP.toFixed(2) : "0"; estimatorElement.querySelector('#result-adj-sp').textContent = results ? results.adjSP.toFixed(2) : "0"; estimatorElement.querySelector('#result-velocity').textContent = (results && results.velocity > 0) ? results.velocity.toFixed(2) : "N/A"; estimatorElement.querySelector('#result-duration').textContent = results ? results.duration : "N/A"; }
 
-    // --- Persistence (MODIFIED for Save/Load files) ---
-    function saveState() {
-        // This still saves to localStorage for auto-saving sessions
-        try {
-            const state = getSerializableState();
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-            console.error("Error saving state to localStorage:", error);
-        }
-    }
-
+    // --- Persistence ---
     function getSerializableState() {
         const serializableItems = {};
         for (const id in items) {
-            const item = items[id];
-            serializableItems[id] = {
-                id: item.id, type: item.type,
-                x: item.x, y: item.y, width: item.width, height: item.height,
-                data: item.data,
-                parentId: item.parentId // NEW: Save parent relationship
-            };
+            const item = items[id]; const width = typeof item.width === 'number' ? item.width : parseInt(item.element?.style.width || DEFAULT_TILE_WIDTH); const height = typeof item.height === 'number' ? item.height : parseInt(item.element?.style.height || DEFAULT_TILE_HEIGHT);
+            serializableItems[id] = { id: item.id, type: item.type, x: item.x, y: item.y, width: isNaN(width) ? DEFAULT_TILE_WIDTH : width, height: isNaN(height) ? DEFAULT_TILE_HEIGHT : height, data: item.data, parentGroup: item.parentGroup };
         }
-        return { items: serializableItems, links: links, nextItemId: nextItemId, nextLinkId: nextLinkId };
+        return { items: serializableItems, links: links, groups: groups, nextItemId: nextItemId, nextLinkId: nextLinkId };
     }
 
-    function handleSave() {
+    function saveState() {
         try {
             const state = getSerializableState();
-            const stateString = JSON.stringify(state, null, 2); // Pretty print JSON
-            const blob = new Blob([stateString], { type: 'application/json' });
-            
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'dashboard-workflow.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-        } catch (error) {
-            console.error("Error saving workflow to file:", error);
-            alert("Could not save workflow to file.");
-        }
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+        } catch (error) { console.error("Error saving state:", error); alert("Error saving state."); }
     }
 
-    function handleLoad(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const content = e.target.result;
-            try {
-                const state = JSON.parse(content);
-                loadStateFromObject(state);
-            } catch (error) {
-                console.error("Error parsing or loading workflow file:", error);
-                alert("Invalid workflow file. Could not load.");
-            }
-        };
-        reader.onerror = () => {
-             console.error("Error reading file:", reader.error);
-             alert("Error reading file.");
-        };
-        reader.readAsText(file);
-
-        // Reset the file input so the 'change' event fires again for the same file
-        event.target.value = '';
-    }
-    
     function loadState() {
-        // Loads from localStorage
-        const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedState) {
-            try {
-                const state = JSON.parse(savedState);
-                loadStateFromObject(state);
-            } catch (error) {
-                console.error("Error loading state from localStorage:", error);
-            }
-        }
+        try {
+            const savedState = localStorage.getItem(LOCAL_STORAGE_KEY); if (!savedState) { console.log("No saved state found."); return; }
+            loadStateFromFile(JSON.parse(savedState));
+        } catch (error) { console.error("Error loading state:", error); alert("Error loading saved state. Starting fresh."); }
     }
 
-    function loadStateFromObject(state) {
-        // --- Clear current canvas ---
-        canvas.querySelectorAll('.tile').forEach(tile => tile.remove());
-        svgLayer.querySelectorAll('.arrow').forEach(arrow => arrow.remove());
-        items = {};
-        links = [];
-        selectedItemIds = [];
-
-        // --- Load from state object ---
-        if (!state.items || typeof state.items !== 'object' || !state.links) {
-            console.error("Invalid state object structure.");
-            return;
-        }
-
-        nextItemId = state.nextItemId || 1;
-        nextLinkId = state.nextLinkId || 1;
-        
-        // Load items
+    function loadStateFromFile(state) {
+        if (!state.items || typeof state.items !== 'object' || !state.links) { console.error("Invalid state structure."); return; }
+        canvas.querySelectorAll('.tile').forEach(tile => tile.remove()); svgLayer.querySelectorAll('.arrow').forEach(arrow => arrow.remove()); items = {}; groups = state.groups || {}; let maxItemId = 0; let maxLinkId = 0;
         for (const id in state.items) {
-            const savedItem = state.items[id];
-            // Recreate DOM element and add to items object
+            const savedItem = state.items[id]; if (!savedItem || !savedItem.id || !savedItem.type || savedItem.x == null || savedItem.y == null) { console.warn(`Skipping invalid saved item:`, savedItem); continue; }
             const element = recreateElementFromSave(savedItem);
             if (element) {
-                canvas.appendChild(element);
-                items[id] = { ...savedItem, element: element };
-                setupTileInteraction(element);
-
-                // Handle group expansion state
-                if (savedItem.type === 'group' && savedItem.data.isExpanded) {
-                    element.classList.add('expanded');
+                if (savedItem.parentGroup) {
+                    const groupContent = items[savedItem.parentGroup]?.element.querySelector('.group-content');
+                    if (groupContent) groupContent.appendChild(element);
+                } else {
+                    canvas.appendChild(element);
                 }
-            }
+                const width = parseInt(savedItem.width || DEFAULT_TILE_WIDTH); const height = parseInt(savedItem.height || DEFAULT_TILE_HEIGHT);
+                items[id] = { ...savedItem, width: isNaN(width) ? DEFAULT_TILE_WIDTH : width, height: isNaN(height) ? DEFAULT_TILE_HEIGHT : height, element: element };
+                setupTileInteraction(element); const numericId = parseInt(id.split('-')[1] || 0); if (numericId > maxItemId) maxItemId = numericId;
+                if (savedItem.type === 'group' && savedItem.data.isExpanded) toggleGroup(id); // Restore expanded state
+            } else { console.warn(`Failed to recreate element for saved item:`, savedItem); }
         }
-
-        // Second pass to handle group child visibility
-         for (const id in items) {
-             const item = items[id];
-             if (item.parentId) {
-                 const parent = items[item.parentId];
-                 if(parent && !parent.data.isExpanded) {
-                     item.element.classList.add('hidden-child');
-                 }
-             }
-         }
-
-        links = state.links || [];
-        
-        console.log(`State loaded. Next Item ID: ${nextItemId}, Next Link ID: ${nextLinkId}`);
-        updateArrows();
-        calculate();
-        saveState(); // Save the newly loaded state to localStorage
+        links = state.links || []; links.forEach(link => { const numericId = parseInt(link.id.split('-')[1] || 0); if(numericId > maxLinkId) maxLinkId = numericId; });
+        nextItemId = Math.max(1, maxItemId + 1); nextLinkId = Math.max(1, maxLinkId + 1);
+        console.log(`State loaded. Next Item ID: ${nextItemId}, Next Link ID: ${nextLinkId}`); updateArrows(); calculate();
     }
 
-    function recreateElementFromSave(savedItem) { /* ... (This function is MODIFIED slightly) ... */
-        let template;
-        // ... (template selection logic remains the same) ...
-        if (savedItem.type === 'group') template = groupTemplate;
-        
-        try {
-            // ... (element creation logic remains the same) ...
-            const node = template.content.cloneNode(true);
-            const element = node.querySelector('.tile');
-            // ... (restore position, size, title) ...
-            
-            if (savedItem.type === 'group') {
-                const p = element.querySelector('.group-content p');
-                if (p) p.textContent = `Contains ${savedItem.data.children.length} items.`;
-            }
-
-            // ... (all other type-specific restore logic remains the same) ...
-
-            return element;
+    function recreateElementFromSave(savedItem) {
+         let template;
+         if (savedItem.type === 'task') template = taskTemplate;
+         else if (savedItem.type === 'estimator') template = estimatorTemplate;
+         else if (savedItem.type === 'data') template = dataTemplate;
+         else if (savedItem.type === 'scribble') template = scribbleTemplate;
+         else if (savedItem.type === 'group') template = groupTemplate;
+         else if (savedItem.type === 'knowledge-section') template = knowledgeSectionTemplate;
+         else if (savedItem.type === 'knowledge-subsection') template = knowledgeSubsectionTemplate;
+         else if (savedItem.type === 'knowledge-item') template = knowledgeItemTemplate;
+         else if (savedItem.type === 'adr') template = adrTemplate;
+         else return null;
+         try {
+             const node = template.content.cloneNode(true); const element = node.querySelector('.tile'); element.id = savedItem.id; element.style.left = `${savedItem.x}px`; element.style.top = `${savedItem.y}px`;
+             const width = parseInt(savedItem.width || DEFAULT_TILE_WIDTH); const height = parseInt(savedItem.height || DEFAULT_TILE_HEIGHT); element.style.width = `${isNaN(width) ? DEFAULT_TILE_WIDTH : width}px`; element.style.height = `${isNaN(height) ? DEFAULT_TILE_HEIGHT : height}px`;
+             const data = savedItem.data || {}; const titleH3 = element.querySelector('.tile-title'); if (titleH3) titleH3.textContent = data.title || '';
+             if (savedItem.type === 'task') {
+                 const complexitySelect = element.querySelector('.complexity'); fibonacciNumbers.forEach(num => { const option = document.createElement('option'); option.value = num; option.text = num; complexitySelect.appendChild(option); });
+                 complexitySelect.value = data.complexity || 3; element.querySelector('.risk').value = data.risk !== undefined ? data.risk : 0.1; element.querySelector('.priority').value = data.priority !== undefined ? data.priority : 3; element.querySelector('.duration').value = data.duration !== undefined ? data.duration : 1;
+                 const descriptionP = element.querySelector('.description'); if(data.description) { descriptionP.textContent = data.description; descriptionP.style.display = 'block'; } else { descriptionP.style.display = 'none'; }
+             } else if (savedItem.type === 'estimator') {
+                 element.querySelector('#team-members').value = data.teamMembers || 5; element.querySelector('#working-hours').value = data.workingHours || 8; element.querySelector('#overhead').value = data.overhead !== undefined ? data.overhead : 0.15; element.querySelector('#productivity').value = data.productivity !== undefined ? data.productivity : 0.85; element.querySelector('#learning-curve').value = data.learningCurve !== undefined ? data.learningCurve : 1.0; element.querySelector('#hours-per-story-point').value = data.hoursPerStoryPoint || 4;
+             } else if (savedItem.type === 'data') {
+                  const imgEl = element.querySelector('.data-image'); const textEl = element.querySelector('.data-text');
+                  if (data.dataType === 'image') { imgEl.src = data.content || ''; imgEl.style.display = 'block'; textEl.style.display = 'none'; }
+                  else { textEl.value = data.content || ''; imgEl.style.display = 'none'; textEl.style.display = 'block'; }
+             } else if (savedItem.type === 'scribble') {
+                  const textEl = element.querySelector('.scribble-text'); if (textEl) textEl.value = data.content || '';
+             } else if (savedItem.type === 'group') {
+                  // Group content is empty initially
+                  element.classList.add(data.isExpanded ? 'expanded' : 'collapsed');
+                  element.querySelector('.group-content').style.display = data.isExpanded ? 'block' : 'none';
+             } else if (savedItem.type.startsWith('knowledge-')) {
+                  const contentEl = element.querySelector('.knowledge-content'); if (contentEl) contentEl.value = data.content || '';
+             } else if (savedItem.type === 'adr') {
+                  element.querySelector('.adr-code').value = data.code || ''; element.querySelector('.adr-category').value = data.category || ''; element.querySelector('.adr-topic').value = data.topic || '';
+             }
+             return element;
         } catch (error) { console.error(`Error recreating element for ${savedItem.id}:`, error, savedItem); return null; }
     }
 
@@ -1115,3 +1402,4 @@
 
 </body>
 </html>
+```
