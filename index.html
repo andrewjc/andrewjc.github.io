@@ -86,8 +86,8 @@
             position: relative;
             min-width: 100%;
             min-height: 100%;
-            width: 5000px;
-            height: 5000px;
+            width: 8000px;
+            height: 8000px;
             transform-origin: 0 0;
             transition: none;
         }
@@ -283,6 +283,74 @@
             border-color: #795548;
         }
 
+        /* Group Content Styles */
+        .group-content {
+            position: relative;
+            min-height: 200px;
+            padding: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-content: flex-start;
+        }
+
+        .group-child-icon {
+            width: 80px;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.8);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .group-child-icon:hover {
+            background: rgba(255,255,255,1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .group-child-icon-symbol {
+            font-size: 32px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .group-child-icon-title {
+            font-size: 11px;
+            text-align: center;
+            color: #5f6368;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            line-height: 1.3;
+        }
+
+        /* Inline expanded nodes within groups */
+        .inline-node {
+            position: relative;
+            width: 100%;
+            margin-bottom: 16px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .inline-node .node-header {
+            cursor: default;
+        }
+
         /* Content Styles */
         .scribble-content {
             white-space: pre-wrap;
@@ -361,26 +429,6 @@
             resize: none;
             font-family: inherit;
             font-size: 13px;
-        }
-
-        .group-content {
-            position: relative;
-            height: 100%;
-            background: rgba(255,255,255,0.5);
-            border: 2px dashed #90caf9;
-            border-radius: 4px;
-            margin: 8px;
-            overflow: auto;
-        }
-
-        .group-placeholder {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #90caf9;
-            font-size: 14px;
-            font-weight: 500;
         }
 
         .knowledge-content,
@@ -586,6 +634,13 @@
             font-weight: 600;
         }
 
+        /* Auto Layout Button */
+        .auto-layout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
         /* Scrollbars */
         ::-webkit-scrollbar {
             width: 8px;
@@ -614,6 +669,7 @@
         <button id="fit-btn">🔍 Fit to Screen</button>
         <button id="zoom-in-btn">➕ Zoom In</button>
         <button id="zoom-out-btn">➖ Zoom Out</button>
+        <button id="auto-layout-btn" class="auto-layout-btn">🔀 Auto Layout</button>
         <button id="reset-btn">🏠 Reset View</button>
         <input type="file" id="file-input" accept=".json">
     </div>
@@ -652,7 +708,7 @@
         <span>•</span>
         <span>Middle-click or Shift+drag to pan</span>
         <span>•</span>
-        <span>Double-click to expand nodes</span>
+        <span>Double-click icons in groups to expand</span>
     </div>
 
     <div id="zoom-indicator">100%</div>
@@ -668,6 +724,7 @@
         let dragOffset = { x: 0, y: 0 };
         let contextMenuPos = { x: 0, y: 0 };
         let groups = {};
+        let expandedInlineNodes = {}; // Track which nodes are expanded inline
         let isPanning = false;
         let panStart = { x: 0, y: 0 };
         let scale = 1;
@@ -685,6 +742,7 @@
         const fitBtn = document.getElementById('fit-btn');
         const zoomInBtn = document.getElementById('zoom-in-btn');
         const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const autoLayoutBtn = document.getElementById('auto-layout-btn');
         const resetBtn = document.getElementById('reset-btn');
         const loading = document.getElementById('loading');
         const zoomIndicator = document.getElementById('zoom-indicator');
@@ -715,6 +773,7 @@
             scale = Math.max(0.2, scale * 0.8);
             updateViewportTransform();
         });
+        autoLayoutBtn.addEventListener('click', autoLayout);
         resetBtn.addEventListener('click', resetView);
 
         // Canvas event listeners
@@ -776,6 +835,7 @@
                     
                     // Build groups from children arrays and parentId
                     groups = {};
+                    expandedInlineNodes = {};
                     Object.values(workflow.items).forEach(item => {
                         if (item.type === 'group' && item.data.children) {
                             groups[item.id] = item.data.children;
@@ -800,23 +860,10 @@
             // Clear existing content
             viewport.querySelectorAll('.node').forEach(node => node.remove());
             
-            // Create nodes - first create all nodes, then handle parent-child relationships
+            // Create top-level nodes only (not children of groups)
             Object.values(workflow.items).forEach(item => {
-                createNode(item);
-            });
-            
-            // After all nodes are created, move children into their parent groups
-            Object.values(workflow.items).forEach(item => {
-                if (item.parentId && groups[item.parentId]) {
-                    const childNode = document.getElementById(item.id);
-                    const parentNode = document.getElementById(item.parentId);
-                    if (childNode && parentNode) {
-                        const parentItem = workflow.items[item.parentId];
-                        if (parentItem && parentItem.type === 'group' && !parentItem.data.isExpanded) {
-                            // Hide children of collapsed groups
-                            childNode.style.display = 'none';
-                        }
-                    }
+                if (!item.parentId) {
+                    createNode(item);
                 }
             });
             
@@ -825,12 +872,15 @@
         }
 
         // Create node
-        function createNode(item) {
+        function createNode(item, isInline = false, parentElement = null) {
             const node = document.createElement('div');
-            node.className = `node ${item.type}`;
+            node.className = `node ${item.type}${isInline ? ' inline-node' : ''}`;
             node.id = item.id;
-            node.style.left = item.x + 'px';
-            node.style.top = item.y + 'px';
+            
+            if (!isInline) {
+                node.style.left = item.x + 'px';
+                node.style.top = item.y + 'px';
+            }
             node.style.width = item.width + 'px';
             node.style.height = item.height + 'px';
             
@@ -850,7 +900,7 @@
             controls.className = 'node-controls';
             
             // Add expand control for expandable types
-            if (hasExpandableContent(item)) {
+            if (hasExpandableContent(item) && !isInline) {
                 const expandBtn = document.createElement('div');
                 expandBtn.className = 'node-control expand-icon';
                 expandBtn.innerHTML = '▶';
@@ -914,22 +964,26 @@
                     break;
             }
             
-            // Resize handle
-            const resizeHandle = document.createElement('div');
-            resizeHandle.className = 'resize-handle';
+            // Resize handle (only for non-inline nodes)
+            if (!isInline) {
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                node.appendChild(resizeHandle);
+                resizeHandle.addEventListener('mousedown', (e) => startResize(node, e));
+            }
             
             node.appendChild(header);
             node.appendChild(content);
-            node.appendChild(resizeHandle);
             
             // Event listeners
-            node.addEventListener('click', (e) => selectNode(node, e));
-            header.addEventListener('mousedown', (e) => startDrag(node, e));
-            resizeHandle.addEventListener('mousedown', (e) => startResize(node, e));
+            if (!isInline) {
+                node.addEventListener('click', (e) => selectNode(node, e));
+                header.addEventListener('mousedown', (e) => startDrag(node, e));
+            }
             title.addEventListener('dblclick', (e) => editTitle(title, item, e));
             
-            // Double-click to expand
-            if (hasExpandableContent(item)) {
+            // Double-click to expand (only for non-inline nodes)
+            if (hasExpandableContent(item) && !isInline) {
                 node.addEventListener('dblclick', (e) => {
                     if (!e.target.classList.contains('node-title')) {
                         toggleNode(node);
@@ -945,7 +999,14 @@
             // Setup change listeners for inputs
             setupInputListeners(node, item);
             
-            viewport.appendChild(node);
+            // Add to appropriate parent
+            if (isInline && parentElement) {
+                parentElement.appendChild(node);
+            } else {
+                viewport.appendChild(node);
+            }
+            
+            return node;
         }
 
         // Content creators
@@ -1015,34 +1076,47 @@
 
         function createGroupContent(item) {
             const children = groups[item.id] || item.data.children || [];
-            const childCount = children.length;
+            const groupContent = document.createElement('div');
+            groupContent.className = 'group-content';
             
-            if (childCount === 0) {
-                return '<div class="group-content"><div class="group-placeholder">Empty group</div></div>';
-            }
-            
-            // Create a summary of children
-            let childrenSummary = '<div class="group-content"><div style="padding: 8px; color: #5f6368; font-size: 13px;">';
-            childrenSummary += `<strong>Contains ${childCount} item${childCount !== 1 ? 's' : ''}:</strong><br>`;
-            
-            // List first few children
-            const maxShow = 5;
-            children.slice(0, maxShow).forEach(childId => {
+            // Create child icons
+            children.forEach(childId => {
                 const childItem = workflow.items[childId];
-                if (childItem) {
-                    const icon = nodeIcons[childItem.type] || '📄';
-                    childrenSummary += `<div style="margin: 4px 0;">• ${icon} ${childItem.data.title || 'Untitled'}</div>`;
+                if (!childItem) return;
+                
+                // Check if this child is already expanded inline
+                if (expandedInlineNodes[childId]) {
+                    // Create inline expanded node
+                    const inlineNode = createNode(childItem, true, groupContent);
+                    inlineNode.id = `inline-${childId}`;
+                } else {
+                    // Create icon
+                    const childIcon = document.createElement('div');
+                    childIcon.className = 'group-child-icon';
+                    childIcon.dataset.childId = childId;
+                    
+                    const iconSymbol = document.createElement('div');
+                    iconSymbol.className = 'group-child-icon-symbol';
+                    iconSymbol.textContent = nodeIcons[childItem.type] || '📄';
+                    
+                    const iconTitle = document.createElement('div');
+                    iconTitle.className = 'group-child-icon-title';
+                    iconTitle.textContent = childItem.data.title || 'Untitled';
+                    
+                    childIcon.appendChild(iconSymbol);
+                    childIcon.appendChild(iconTitle);
+                    
+                    // Double-click to expand inline
+                    childIcon.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        toggleInlineNode(childId, item.id);
+                    });
+                    
+                    groupContent.appendChild(childIcon);
                 }
             });
             
-            if (childCount > maxShow) {
-                childrenSummary += `<div style="margin: 4px 0; font-style: italic;">... and ${childCount - maxShow} more</div>`;
-            }
-            
-            childrenSummary += '<br><em style="color: #90a4ae;">Double-click to expand</em>';
-            childrenSummary += '</div></div>';
-            
-            return childrenSummary;
+            return groupContent.outerHTML;
         }
 
         function createADRContent(data) {
@@ -1059,6 +1133,155 @@
                     </label>
                 </div>
             `;
+        }
+
+        // Toggle inline node expansion
+        function toggleInlineNode(childId, parentId) {
+            const parentNode = document.getElementById(parentId);
+            if (!parentNode) return;
+            
+            const parentItem = workflow.items[parentId];
+            if (!parentItem) return;
+            
+            if (expandedInlineNodes[childId]) {
+                // Collapse
+                delete expandedInlineNodes[childId];
+            } else {
+                // Expand
+                expandedInlineNodes[childId] = true;
+            }
+            
+            // Recreate group content
+            const content = parentNode.querySelector('.node-content');
+            content.innerHTML = createGroupContent(parentItem);
+            
+            // Re-setup input listeners for any inputs in the recreated content
+            setupInputListeners(parentNode, parentItem);
+        }
+
+        // Auto Layout Algorithm
+        function autoLayout() {
+            const rootNodes = Object.values(workflow.items).filter(item => !item.parentId);
+            if (rootNodes.length === 0) return;
+            
+            // Build hierarchy
+            const hierarchy = buildHierarchy(rootNodes);
+            
+            // Calculate positions using tree layout
+            const nodeSpacingX = 350;
+            const nodeSpacingY = 250;
+            const startX = 100;
+            const startY = 100;
+            
+            layoutHierarchy(hierarchy, startX, startY, nodeSpacingX, nodeSpacingY);
+            
+            // Update node positions in DOM
+            Object.values(workflow.items).forEach(item => {
+                const node = document.getElementById(item.id);
+                if (node && !node.classList.contains('inline-node')) {
+                    node.style.left = item.x + 'px';
+                    node.style.top = item.y + 'px';
+                }
+            });
+            
+            updateLinks();
+        }
+
+        function buildHierarchy(nodes) {
+            const hierarchy = [];
+            
+            nodes.forEach(node => {
+                const hierNode = {
+                    item: node,
+                    children: []
+                };
+                
+                // Find all nodes that link from this node
+                const childLinks = workflow.links.filter(link => link.sourceId === node.id);
+                childLinks.forEach(link => {
+                    const childItem = workflow.items[link.targetId];
+                    if (childItem) {
+                        hierNode.children.push(...buildHierarchy([childItem]));
+                    }
+                });
+                
+                hierarchy.push(hierNode);
+            });
+            
+            return hierarchy;
+        }
+
+        function layoutHierarchy(hierarchy, startX, startY, spacingX, spacingY) {
+            let currentX = startX;
+            
+            hierarchy.forEach((node, index) => {
+                const subtreeWidth = calculateSubtreeWidth(node, spacingX);
+                const centerX = currentX + subtreeWidth / 2;
+                
+                // Position this node
+                node.item.x = centerX - node.item.width / 2;
+                node.item.y = startY;
+                
+                // Layout children
+                if (node.children.length > 0) {
+                    layoutHierarchy(node.children, currentX, startY + spacingY, spacingX, spacingY);
+                }
+                
+                currentX += subtreeWidth + spacingX;
+            });
+        }
+
+        function calculateSubtreeWidth(node, spacing) {
+            if (node.children.length === 0) {
+                return node.item.width;
+            }
+            
+            let totalWidth = 0;
+            node.children.forEach((child, index) => {
+                totalWidth += calculateSubtreeWidth(child, spacing);
+                if (index < node.children.length - 1) {
+                    totalWidth += spacing;
+                }
+            });
+            
+            return Math.max(node.item.width, totalWidth);
+        }
+
+        // Pathfinding for arrows
+        function findPath(startPoint, endPoint, obstacles) {
+            // Simple implementation - just avoid direct overlap
+            // For a more sophisticated approach, implement A* algorithm
+            
+            const path = [];
+            path.push(startPoint);
+            
+            // Check if direct path intersects any obstacles
+            let needsRouting = false;
+            obstacles.forEach(obstacle => {
+                if (lineIntersectsRect(startPoint, endPoint, obstacle)) {
+                    needsRouting = true;
+                }
+            });
+            
+            if (needsRouting) {
+                // Create waypoints around obstacles
+                const midY = (startPoint.y + endPoint.y) / 2;
+                path.push({ x: startPoint.x, y: midY });
+                path.push({ x: endPoint.x, y: midY });
+            }
+            
+            path.push(endPoint);
+            return path;
+        }
+
+        function lineIntersectsRect(p1, p2, rect) {
+            // Simple bounding box check
+            const minX = Math.min(p1.x, p2.x);
+            const maxX = Math.max(p1.x, p2.x);
+            const minY = Math.min(p1.y, p2.y);
+            const maxY = Math.max(p1.y, p2.y);
+            
+            return !(rect.right < minX || rect.left > maxX || rect.bottom < minY || rect.top > maxY);
         }
 
         // Markdown parser
@@ -1163,26 +1386,6 @@
             
             node.classList.toggle('expanded');
             item.data.isExpanded = node.classList.contains('expanded');
-            
-            // Handle group expansion
-            if (item.type === 'group') {
-                const children = groups[item.id] || item.data.children || [];
-                children.forEach(childId => {
-                    const childNode = document.getElementById(childId);
-                    if (childNode) {
-                        if (item.data.isExpanded) {
-                            childNode.style.display = 'flex';
-                            // Check if child is also a group and was expanded
-                            const childItem = workflow.items[childId];
-                            if (childItem && childItem.type === 'group' && childItem.data.isExpanded) {
-                                childNode.classList.add('expanded');
-                            }
-                        } else {
-                            childNode.style.display = 'none';
-                        }
-                    }
-                });
-            }
             
             updateLinks();
         }
@@ -1504,6 +1707,9 @@
                 });
             }
             
+            // Remove from expanded inline nodes
+            delete expandedInlineNodes[nodeId];
+            
             delete workflow.items[nodeId];
             
             // Remove from groups and update parent's children array
@@ -1522,9 +1728,23 @@
             updateLinks();
         }
 
-        // Links
+        // Links with pathfinding
         function updateLinks() {
             linksSvg.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" class="link-arrow"/></marker></defs>';
+            
+            // Get all visible nodes as obstacles
+            const obstacles = [];
+            Object.values(workflow.items).forEach(item => {
+                const node = document.getElementById(item.id);
+                if (node && node.style.display !== 'none') {
+                    obstacles.push({
+                        left: item.x * scale + translateX,
+                        top: item.y * scale + translateY,
+                        right: (item.x + item.width) * scale + translateX,
+                        bottom: (item.y + item.height) * scale + translateY
+                    });
+                }
+            });
             
             workflow.links.forEach(link => {
                 const source = document.getElementById(link.sourceId);
@@ -1540,15 +1760,32 @@
                 
                 if (!sourceItem || !targetItem) return;
                 
-                // Calculate connection points based on stored positions
-                const sx = (sourceItem.x + sourceItem.width / 2) * scale + translateX;
-                const sy = (sourceItem.y + sourceItem.height) * scale + translateY;
-                const tx = (targetItem.x + targetItem.width / 2) * scale + translateX;
-                const ty = (targetItem.y) * scale + translateY;
+                // Calculate connection points
+                const startPoint = {
+                    x: (sourceItem.x + sourceItem.width / 2) * scale + translateX,
+                    y: (sourceItem.y + sourceItem.height) * scale + translateY
+                };
+                const endPoint = {
+                    x: (targetItem.x + targetItem.width / 2) * scale + translateX,
+                    y: targetItem.y * scale + translateY
+                };
+                
+                // Find path avoiding obstacles
+                const pathPoints = findPath(startPoint, endPoint, obstacles.filter(obs => {
+                    // Don't avoid the source and target nodes
+                    return obs !== obstacles[workflow.items[link.sourceId]] && 
+                           obs !== obstacles[workflow.items[link.targetId]];
+                }));
+                
+                // Create path string
+                let pathString = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
+                for (let i = 1; i < pathPoints.length; i++) {
+                    pathString += ` L ${pathPoints[i].x} ${pathPoints[i].y}`;
+                }
                 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.classList.add('link');
-                path.setAttribute('d', `M ${sx} ${sy} L ${tx} ${ty}`);
+                path.setAttribute('d', pathString);
                 path.setAttribute('marker-end', 'url(#arrowhead)');
                 
                 linksSvg.appendChild(path);
@@ -1577,6 +1814,18 @@
                 // Prevent drag when interacting with inputs
                 input.addEventListener('mousedown', e => e.stopPropagation());
             });
+            
+            // Setup listeners for group child icons
+            if (item.type === 'group') {
+                const childIcons = node.querySelectorAll('.group-child-icon');
+                childIcons.forEach(icon => {
+                    icon.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        const childId = icon.dataset.childId;
+                        toggleInlineNode(childId, item.id);
+                    });
+                });
+            }
         }
 
         function updateItemData(item) {
@@ -1769,8 +2018,7 @@
             let hasVisibleNodes = false;
             
             Object.values(workflow.items).forEach(item => {
-                const node = document.getElementById(item.id);
-                if (node && node.style.display !== 'none') {
+                if (!item.parentId) { // Only consider top-level nodes
                     hasVisibleNodes = true;
                     minX = Math.min(minX, item.x);
                     minY = Math.min(minY, item.y);
