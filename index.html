@@ -76,9 +76,11 @@
             background-color: #e8eaed;
             background-image: radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px);
             background-size: 20px 20px;
+            cursor: grab;
         }
         
-        #canvas.panning {
+        #canvas.panning,
+        #viewport.panning {
             cursor: grabbing !important;
         }
 
@@ -90,6 +92,7 @@
             height: 8000px;
             transform-origin: 0 0;
             transition: none;
+            cursor: grab;
         }
 
         /* Base Node Styles */
@@ -702,11 +705,11 @@
     </div>
 
     <div id="info-panel">
-        <span>Right-click canvas for menu</span>
+        <span>Right-click for menu</span>
+        <span>•</span>
+        <span>Drag background to pan</span>
         <span>•</span>
         <span>Ctrl+Wheel to zoom</span>
-        <span>•</span>
-        <span>Middle-click or Shift+drag to pan</span>
         <span>•</span>
         <span>Double-click icons in groups to expand</span>
     </div>
@@ -727,6 +730,8 @@
         let expandedInlineNodes = {}; // Track which nodes are expanded inline
         let isPanning = false;
         let panStart = { x: 0, y: 0 };
+        let panStartTime = 0;
+        let panThreshold = 5; // pixels
         let scale = 1;
         let translateX = 0;
         let translateY = 0;
@@ -783,6 +788,7 @@
         canvas.addEventListener('mousedown', handlePanStart);
         canvas.addEventListener('mousemove', handlePan);
         canvas.addEventListener('mouseup', handlePanEnd);
+        canvas.addEventListener('mouseleave', handlePanEnd);
         document.addEventListener('paste', handlePaste);
 
         // Context menu listeners
@@ -1519,6 +1525,9 @@
         function handleContextMenu(e) {
             e.preventDefault();
             
+            // Don't show context menu while panning or just after panning
+            if (isPanning || (panStart.x !== 0 || panStart.y !== 0)) return;
+            
             if (e.target === canvas || e.target === viewport) {
                 const canvasRect = canvas.getBoundingClientRect();
                 
@@ -1559,32 +1568,54 @@
         }
 
         function handlePanStart(e) {
-            if (e.button === 1 || (e.button === 0 && e.shiftKey)) { // Middle button or shift+left
+            // Allow panning with left click on canvas/viewport, middle button, or shift+left
+            if ((e.button === 0 && (e.target === canvas || e.target === viewport)) || 
+                e.button === 1 || 
+                (e.button === 0 && e.shiftKey)) {
                 e.preventDefault();
-                isPanning = true;
                 panStart = { x: e.clientX, y: e.clientY };
-                canvas.style.cursor = 'grabbing';
-                canvas.classList.add('panning');
+                panStartTime = Date.now();
+                // Don't set isPanning immediately - wait for actual movement
             }
         }
 
         function handlePan(e) {
-            if (!isPanning) return;
+            if (!panStart.x && !panStart.y) return;
             
             const dx = e.clientX - panStart.x;
             const dy = e.clientY - panStart.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
             
-            canvas.scrollLeft -= dx;
-            canvas.scrollTop -= dy;
+            // Only start panning if moved beyond threshold
+            if (!isPanning && distance > panThreshold) {
+                isPanning = true;
+                canvas.style.cursor = 'grabbing';
+                viewport.style.cursor = 'grabbing';
+                canvas.classList.add('panning');
+                viewport.classList.add('panning');
+            }
             
-            panStart = { x: e.clientX, y: e.clientY };
+            if (isPanning) {
+                canvas.scrollLeft -= dx;
+                canvas.scrollTop -= dy;
+                panStart = { x: e.clientX, y: e.clientY };
+            }
         }
 
         function handlePanEnd(e) {
+            const wasPanning = isPanning;
             if (isPanning) {
                 isPanning = false;
-                canvas.style.cursor = 'default';
+                canvas.style.cursor = 'grab';
+                viewport.style.cursor = 'grab';
                 canvas.classList.remove('panning');
+                viewport.classList.remove('panning');
+            }
+            panStart = { x: 0, y: 0 };
+            
+            // If it was a quick click without much movement, treat it as a click
+            if (!wasPanning && Date.now() - panStartTime < 200) {
+                handleCanvasClick(e);
             }
         }
 
@@ -1595,6 +1626,9 @@
         }
 
         function handleCanvasClick(e) {
+            // Skip if this was called from a pan operation
+            if (panStart.x !== 0 || panStart.y !== 0) return;
+            
             if (contextMenu.style.display === 'block') {
                 contextMenu.style.display = 'none';
             }
@@ -2048,11 +2082,6 @@
             const activeElement = document.activeElement;
             if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.contentEditable === 'true') return;
             
-            // Show pan cursor when shift is held
-            if (e.key === 'Shift' && !isPanning) {
-                canvas.style.cursor = 'grab';
-            }
-            
             // Zoom shortcuts
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === '+' || e.key === '=') {
@@ -2073,13 +2102,6 @@
             }
         }
         
-        // Reset cursor when shift is released
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'Shift' && !isPanning) {
-                canvas.style.cursor = 'default';
-            }
-        });
-
         // Utility functions
         function hasExpandableContent(item) {
             return item.data.content || 
