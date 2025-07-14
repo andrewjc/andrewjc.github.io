@@ -107,6 +107,10 @@
             transition: none;
             cursor: grab;
         }
+        
+        #links-svg {
+            cursor: grab;
+        }
 
         /* Base Node Styles */
         .node {
@@ -540,7 +544,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: all;
+            pointer-events: none;
             z-index: 1;
         }
 
@@ -557,6 +561,13 @@
             stroke: #616161;
             stroke-width: 4;
             opacity: 1;
+        }
+        
+        .link-clickable {
+            stroke: transparent;
+            stroke-width: 12;
+            cursor: pointer;
+            pointer-events: stroke;
         }
 
         .link-arrow {
@@ -866,7 +877,7 @@
             }
         });
 
-        // Canvas event listeners
+        // Canvas event listeners - events bubble up from viewport
         canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.addEventListener('click', handleCanvasClick);
         canvas.addEventListener('wheel', handleWheel);
@@ -2120,8 +2131,10 @@
             
             const targetElement = e.target;
             const groupNode = targetElement.closest('.node.group');
+            const anyNode = targetElement.closest('.node');
             
-            if (e.target === canvas || e.target === viewport || groupNode) {
+            // Show context menu if we're not clicking on a node (except groups which allow right-click inside)
+            if (!anyNode || groupNode) {
                 const canvasRect = canvas.getBoundingClientRect();
                 
                 // Calculate position in viewport coordinates accounting for zoom/pan
@@ -2170,8 +2183,12 @@
         }
 
         function handlePanStart(e) {
-            // Allow panning with left click on canvas/viewport, middle button, or shift+left
-            if ((e.button === 0 && (e.target === canvas || e.target === viewport)) || 
+            // Check if we clicked on a node or its children
+            const clickedNode = e.target.closest('.node');
+            const clickedLink = e.target.closest('.link, .link-clickable');
+            
+            // Allow panning with left click on canvas/viewport (not on nodes or links), middle button, or shift+left
+            if ((e.button === 0 && !clickedNode && !clickedLink) || 
                 e.button === 1 || 
                 (e.button === 0 && e.shiftKey)) {
                 e.preventDefault();
@@ -2239,7 +2256,9 @@
                 contextMenu.style.display = 'none';
             }
             
-            if (e.target === canvas || e.target === viewport) {
+            const clickedNode = e.target.closest('.node');
+            
+            if (!clickedNode) {
                 if (selectedNode) {
                     selectedNode.classList.remove('selected');
                     selectedNode = null;
@@ -2510,10 +2529,7 @@
                 // Create invisible wider path for easier clicking
                 const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 clickPath.setAttribute('d', pathString);
-                clickPath.style.stroke = 'transparent';
-                clickPath.style.strokeWidth = '12';
-                clickPath.style.cursor = 'pointer';
-                clickPath.style.pointerEvents = 'stroke';
+                clickPath.classList.add('link-clickable');
                 
                 // Add click handler to delete link
                 const deleteLink = (e) => {
