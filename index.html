@@ -60,6 +60,15 @@
             background: rgba(255,255,255,0.3);
             transform: translateY(-1px);
         }
+        
+        #topbar #clear-btn {
+            background: rgba(220, 53, 69, 0.3);
+            border-color: rgba(220, 53, 69, 0.5);
+        }
+        
+        #topbar #clear-btn:hover {
+            background: rgba(220, 53, 69, 0.5);
+        }
 
         input[type="file"] {
             display: none;
@@ -352,6 +361,30 @@
 
         .inline-node .node-header {
             cursor: default;
+            position: relative;
+        }
+
+        .inline-collapse-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.05);
+            transition: background 0.2s;
+            color: #5f6368;
+            font-size: 12px;
+        }
+
+        .inline-collapse-btn:hover {
+            background: rgba(0,0,0,0.1);
+            color: #202124;
         }
 
         /* Content Styles */
@@ -674,6 +707,7 @@
         <button id="zoom-out-btn">➖ Zoom Out</button>
         <button id="auto-layout-btn" class="auto-layout-btn">🔀 Auto Layout</button>
         <button id="reset-btn">🏠 Reset View</button>
+        <button id="clear-btn">🗑️ Clear All</button>
         <input type="file" id="file-input" accept=".json">
     </div>
 
@@ -709,9 +743,9 @@
         <span>•</span>
         <span>Drag background to pan</span>
         <span>•</span>
-        <span>Ctrl+Wheel to zoom</span>
+        <span>Scroll to zoom</span>
         <span>•</span>
-        <span>Double-click icons in groups to expand</span>
+        <span>Auto-saves to browser</span>
     </div>
 
     <div id="zoom-indicator">100%</div>
@@ -735,6 +769,9 @@
         let scale = 1;
         let translateX = 0;
         let translateY = 0;
+        
+        // Storage key
+        const STORAGE_KEY = 'workflow-visualizer-state';
 
         // DOM elements
         const canvas = document.getElementById('canvas');
@@ -749,6 +786,7 @@
         const zoomOutBtn = document.getElementById('zoom-out-btn');
         const autoLayoutBtn = document.getElementById('auto-layout-btn');
         const resetBtn = document.getElementById('reset-btn');
+        const clearBtn = document.getElementById('clear-btn');
         const loading = document.getElementById('loading');
         const zoomIndicator = document.getElementById('zoom-indicator');
 
@@ -780,6 +818,20 @@
         });
         autoLayoutBtn.addEventListener('click', autoLayout);
         resetBtn.addEventListener('click', resetView);
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Clear all nodes and data? This cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
+                groups = {};
+                expandedInlineNodes = {};
+                scale = 1;
+                translateX = 0;
+                translateY = 0;
+                renderWorkflow();
+                updateViewportTransform();
+                resetView();
+            }
+        });
 
         // Canvas event listeners
         canvas.addEventListener('contextmenu', handleContextMenu);
@@ -789,6 +841,7 @@
         canvas.addEventListener('mousemove', handlePan);
         canvas.addEventListener('mouseup', handlePanEnd);
         canvas.addEventListener('mouseleave', handlePanEnd);
+        canvas.addEventListener('scroll', () => autoSave()); // Save scroll position
         document.addEventListener('paste', handlePaste);
 
         // Context menu listeners
@@ -796,6 +849,76 @@
         
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
+
+        // Storage functions
+        function saveToLocalStorage() {
+            try {
+                // Update children arrays in group data before saving
+                Object.keys(groups).forEach(groupId => {
+                    if (workflow.items[groupId]) {
+                        workflow.items[groupId].data.children = groups[groupId];
+                    }
+                });
+                
+                const state = {
+                    workflow: workflow,
+                    groups: groups,
+                    expandedInlineNodes: expandedInlineNodes,
+                    scale: scale,
+                    translateX: translateX,
+                    translateY: translateY,
+                    scrollLeft: canvas.scrollLeft,
+                    scrollTop: canvas.scrollTop
+                };
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+        }
+        
+        function loadFromLocalStorage() {
+            try {
+                const savedState = localStorage.getItem(STORAGE_KEY);
+                if (!savedState) return false;
+                
+                const state = JSON.parse(savedState);
+                
+                // Load workflow data
+                workflow = state.workflow || { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
+                groups = state.groups || {};
+                expandedInlineNodes = state.expandedInlineNodes || {};
+                
+                // Load view state
+                scale = state.scale || 1;
+                translateX = state.translateX || 0;
+                translateY = state.translateY || 0;
+                
+                // Render workflow
+                renderWorkflow();
+                updateViewportTransform();
+                
+                // Restore scroll position after a small delay to ensure DOM is ready
+                setTimeout(() => {
+                    if (state.scrollLeft) canvas.scrollLeft = state.scrollLeft;
+                    if (state.scrollTop) canvas.scrollTop = state.scrollTop;
+                }, 50);
+                
+                return true;
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                return false;
+            }
+        }
+        
+        // Auto-save on changes
+        let saveTimeout;
+        function autoSave() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveToLocalStorage();
+            }, 100); // Debounce saves by 100ms
+        }
 
         // File handling
         function saveWorkflow() {
@@ -852,6 +975,9 @@
                     loading.style.display = 'none';
                     updateViewportTransform();
                     fitToScreen();
+                    
+                    // Save the loaded workflow
+                    autoSave();
                 } catch (error) {
                     alert('Error loading workflow: ' + error.message);
                     loading.style.display = 'none';
@@ -881,7 +1007,7 @@
         function createNode(item, isInline = false, parentElement = null) {
             const node = document.createElement('div');
             node.className = `node ${item.type}${isInline ? ' inline-node' : ''}`;
-            node.id = item.id;
+            node.id = isInline ? `inline-${item.id}` : item.id;
             
             if (!isInline) {
                 node.style.left = item.x + 'px';
@@ -905,7 +1031,7 @@
             const controls = document.createElement('div');
             controls.className = 'node-controls';
             
-            // Add expand control for expandable types
+            // Add expand control for expandable types (only for non-inline)
             if (hasExpandableContent(item) && !isInline) {
                 const expandBtn = document.createElement('div');
                 expandBtn.className = 'node-control expand-icon';
@@ -917,17 +1043,35 @@
                 controls.appendChild(expandBtn);
             }
             
-            // Delete Button
-            const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'node-control';
-            deleteBtn.innerHTML = '✕';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (confirm('Delete this node?')) {
-                    deleteNode(item.id);
-                }
-            });
-            controls.appendChild(deleteBtn);
+            // Delete Button (only for non-inline)
+            if (!isInline) {
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'node-control';
+                deleteBtn.innerHTML = '✕';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm('Delete this node?')) {
+                        deleteNode(item.id);
+                    }
+                });
+                controls.appendChild(deleteBtn);
+            }
+            
+            // Add collapse button for inline nodes
+            if (isInline) {
+                const collapseBtn = document.createElement('div');
+                collapseBtn.className = 'inline-collapse-btn';
+                collapseBtn.innerHTML = '◀';
+                collapseBtn.title = 'Collapse to icon';
+                collapseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const parentId = item.parentId;
+                    if (parentId) {
+                        toggleInlineNode(item.id, parentId);
+                    }
+                });
+                header.appendChild(collapseBtn);
+            }
             
             header.appendChild(icon);
             header.appendChild(title);
@@ -998,7 +1142,7 @@
             }
             
             // Restore expanded state
-            if (item.data.isExpanded) {
+            if (item.data.isExpanded || (isInline && expandedInlineNodes[item.id])) {
                 node.classList.add('expanded');
             }
             
@@ -1094,7 +1238,6 @@
                 if (expandedInlineNodes[childId]) {
                     // Create inline expanded node
                     const inlineNode = createNode(childItem, true, groupContent);
-                    inlineNode.id = `inline-${childId}`;
                 } else {
                     // Create icon
                     const childIcon = document.createElement('div');
@@ -1163,6 +1306,8 @@
             
             // Re-setup input listeners for any inputs in the recreated content
             setupInputListeners(parentNode, parentItem);
+            
+            autoSave();
         }
 
         // Auto Layout Algorithm
@@ -1191,6 +1336,7 @@
             });
             
             updateLinks();
+            autoSave();
         }
 
         function buildHierarchy(nodes) {
@@ -1256,8 +1402,6 @@
         // Pathfinding for arrows
         function findPath(startPoint, endPoint, obstacles) {
             // Simple implementation - just avoid direct overlap
-            // For a more sophisticated approach, implement A* algorithm
-            
             const path = [];
             path.push(startPoint);
             
@@ -1394,6 +1538,7 @@
             item.data.isExpanded = node.classList.contains('expanded');
             
             updateLinks();
+            autoSave();
         }
 
         function editTitle(titleEl, item, e) {
@@ -1415,6 +1560,7 @@
                 const newTitle = titleEl.textContent.trim();
                 if (newTitle) {
                     item.data.title = newTitle;
+                    autoSave();
                 } else {
                     titleEl.textContent = oldTitle;
                 }
@@ -1478,6 +1624,7 @@
             isDragging = false;
             if (selectedNode) {
                 selectedNode.classList.remove('dragging');
+                autoSave();
             }
             document.removeEventListener('mousemove', handleDrag);
             document.removeEventListener('mouseup', stopDrag);
@@ -1519,6 +1666,7 @@
             isResizing = false;
             document.removeEventListener('mousemove', handleResize);
             document.removeEventListener('mouseup', stopResize);
+            autoSave();
         }
 
         // Context menu
@@ -1545,25 +1693,31 @@
 
         // Pan and Zoom
         function handleWheel(e) {
-            if (e.ctrlKey || e.metaKey) {
-                e.preventDefault();
+            e.preventDefault();
+            
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.min(Math.max(0.2, scale * delta), 3);
+            
+            if (newScale !== scale) {
+                const canvasRect = canvas.getBoundingClientRect();
                 
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                const newScale = Math.min(Math.max(0.2, scale * delta), 3);
+                // Get mouse position relative to canvas
+                const mouseX = e.clientX - canvasRect.left;
+                const mouseY = e.clientY - canvasRect.top;
                 
-                if (newScale !== scale) {
-                    const canvasRect = canvas.getBoundingClientRect();
-                    const mouseX = e.clientX - canvasRect.left + canvas.scrollLeft;
-                    const mouseY = e.clientY - canvasRect.top + canvas.scrollTop;
-                    
-                    // Adjust translation to zoom towards mouse position
-                    const scaleDiff = newScale - scale;
-                    translateX -= (mouseX - translateX) * (scaleDiff / scale);
-                    translateY -= (mouseY - translateY) * (scaleDiff / scale);
-                    
-                    scale = newScale;
-                    updateViewportTransform();
-                }
+                // Calculate the point in the viewport that the mouse is over
+                const viewportX = (mouseX + canvas.scrollLeft - translateX) / scale;
+                const viewportY = (mouseY + canvas.scrollTop - translateY) / scale;
+                
+                // Update scale
+                const oldScale = scale;
+                scale = newScale;
+                
+                // Calculate new translate values to keep the point under the mouse stationary
+                translateX = mouseX + canvas.scrollLeft - viewportX * scale;
+                translateY = mouseY + canvas.scrollTop - viewportY * scale;
+                
+                updateViewportTransform();
             }
         }
 
@@ -1610,6 +1764,7 @@
                 viewport.style.cursor = 'grab';
                 canvas.classList.remove('panning');
                 viewport.classList.remove('panning');
+                autoSave(); // Save scroll position after panning
             }
             panStart = { x: 0, y: 0 };
             
@@ -1623,6 +1778,7 @@
             viewport.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
             zoomIndicator.textContent = Math.round(scale * 100) + '%';
             updateLinks();
+            autoSave();
         }
 
         function handleCanvasClick(e) {
@@ -1724,6 +1880,7 @@
             workflow.items[id] = item;
             createNode(item);
             updateLinks();
+            autoSave();
         }
 
         // Delete node
@@ -1760,6 +1917,7 @@
             );
             
             updateLinks();
+            autoSave();
         }
 
         // Links with pathfinding
@@ -1843,6 +2001,8 @@
                     if (item.type === 'estimator') {
                         calculateEstimates();
                     }
+                    
+                    autoSave();
                 });
                 
                 // Prevent drag when interacting with inputs
@@ -1863,7 +2023,7 @@
         }
 
         function updateItemData(item) {
-            const node = document.getElementById(item.id);
+            const node = document.getElementById(item.id) || document.getElementById(`inline-${item.id}`);
             if (!node) return;
             
             switch (item.type) {
@@ -2006,6 +2166,7 @@
                         
                         workflow.items[id] = pasteItem;
                         createNode(pasteItem);
+                        autoSave();
                     };
                     
                     reader.readAsDataURL(blob);
@@ -2039,6 +2200,7 @@
                         
                         workflow.items[id] = pasteItem;
                         createNode(pasteItem);
+                        autoSave();
                     });
                 }
             }
@@ -2082,7 +2244,7 @@
             const activeElement = document.activeElement;
             if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.contentEditable === 'true') return;
             
-            // Zoom shortcuts
+            // Zoom shortcuts with Ctrl/Cmd
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === '+' || e.key === '=') {
                     e.preventDefault();
@@ -2100,8 +2262,16 @@
                     updateViewportTransform();
                 }
             }
+            
+            // Delete key for selected node
+            if (e.key === 'Delete' && selectedNode) {
+                const item = workflow.items[selectedNode.id];
+                if (item && confirm('Delete this node?')) {
+                    deleteNode(selectedNode.id);
+                }
+            }
         }
-        
+
         // Utility functions
         function hasExpandableContent(item) {
             return item.data.content || 
@@ -2112,9 +2282,11 @@
                    item.type.startsWith('knowledge-');
         }
 
-        // Initialize with empty workflow
-        renderWorkflow();
-        updateViewportTransform();
+        // Initialize with saved workflow or empty
+        if (!loadFromLocalStorage()) {
+            renderWorkflow();
+            updateViewportTransform();
+        }
     </script>
 </body>
 </html>
