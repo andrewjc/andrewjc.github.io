@@ -664,10 +664,16 @@
 
         // File handling
         function saveWorkflow() {
+            // Update children arrays in group data before saving
+            Object.keys(groups).forEach(groupId => {
+                if (workflow.items[groupId]) {
+                    workflow.items[groupId].data.children = groups[groupId];
+                }
+            });
+            
             const state = {
                 items: workflow.items,
                 links: workflow.links,
-                groups: groups,
                 nextItemId: workflow.nextItemId,
                 nextLinkId: workflow.nextLinkId
             };
@@ -697,7 +703,15 @@
                         nextItemId: data.nextItemId || 1,
                         nextLinkId: data.nextLinkId || 1
                     };
-                    groups = data.groups || {};
+                    
+                    // Build groups from children arrays and parentId
+                    groups = {};
+                    Object.values(workflow.items).forEach(item => {
+                        if (item.type === 'group' && item.data.children) {
+                            groups[item.id] = item.data.children;
+                        }
+                    });
+                    
                     renderWorkflow();
                     loading.style.display = 'none';
                     fitToScreen();
@@ -715,9 +729,24 @@
             // Clear existing content
             viewport.querySelectorAll('.node').forEach(node => node.remove());
             
-            // Create nodes
+            // Create nodes - first create all nodes, then handle parent-child relationships
             Object.values(workflow.items).forEach(item => {
                 createNode(item);
+            });
+            
+            // After all nodes are created, move children into their parent groups
+            Object.values(workflow.items).forEach(item => {
+                if (item.parentId && groups[item.parentId]) {
+                    const childNode = document.getElementById(item.id);
+                    const parentNode = document.getElementById(item.parentId);
+                    if (childNode && parentNode) {
+                        const parentItem = workflow.items[item.parentId];
+                        if (parentItem && parentItem.type === 'group' && !parentItem.data.isExpanded) {
+                            // Hide children of collapsed groups
+                            childNode.style.display = 'none';
+                        }
+                    }
+                }
             });
             
             // Update links
@@ -761,6 +790,7 @@
                 controls.appendChild(expandBtn);
             }
             
+            // Delete Button
             const deleteBtn = document.createElement('div');
             deleteBtn.className = 'node-control';
             deleteBtn.innerHTML = '✕';
@@ -845,11 +875,6 @@
             setupInputListeners(node, item);
             
             viewport.appendChild(node);
-            
-            // If it's a group and expanded, render children
-            if (item.type === 'group' && item.data.isExpanded && groups[item.id]) {
-                renderGroupChildren(item.id);
-            }
         }
 
         // Content creators
@@ -918,12 +943,35 @@
         }
 
         function createGroupContent(item) {
-            const childCount = groups[item.id] ? groups[item.id].length : 0;
-            return `
-                <div class="group-content">
-                    ${childCount === 0 ? '<div class="group-placeholder">Drop items here</div>' : ''}
-                </div>
-            `;
+            const children = groups[item.id] || item.data.children || [];
+            const childCount = children.length;
+            
+            if (childCount === 0) {
+                return '<div class="group-content"><div class="group-placeholder">Empty group</div></div>';
+            }
+            
+            // Create a summary of children
+            let childrenSummary = '<div class="group-content"><div style="padding: 8px; color: #5f6368; font-size: 13px;">';
+            childrenSummary += `<strong>Contains ${childCount} item${childCount !== 1 ? 's' : ''}:</strong><br>`;
+            
+            // List first few children
+            const maxShow = 5;
+            children.slice(0, maxShow).forEach(childId => {
+                const childItem = workflow.items[childId];
+                if (childItem) {
+                    const icon = nodeIcons[childItem.type] || '📄';
+                    childrenSummary += `<div style="margin: 4px 0;">• ${icon} ${childItem.data.title || 'Untitled'}</div>`;
+                }
+            });
+            
+            if (childCount > maxShow) {
+                childrenSummary += `<div style="margin: 4px 0; font-style: italic;">... and ${childCount - maxShow} more</div>`;
+            }
+            
+            childrenSummary += '<br><em style="color: #90a4ae;">Double-click to expand</em>';
+            childrenSummary += '</div></div>';
+            
+            return childrenSummary;
         }
 
         function createADRContent(data) {
@@ -943,6 +991,26 @@
         }
 
         // Markdown parser
+        function parseMarkdown(text) {
+            if (!text) return '';
+            
+            // Escape HTML
+            text = text.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;');
+            
+            // Headers
+            text = text.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+            
+            // Bold
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            
+            // Lists
+            text = text.replace(/^\* (.+)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>        // Markdown parser
         function parseMarkdown(text) {
             if (!text) return '';
             
@@ -983,6 +1051,68 @@
             }).join('\n');
             
             return text;
+        }</ul>');
+            
+            // Code
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Tables - improved support
+            const lines = text.split('\n');
+            let inTable = false;
+            let tableHtml = '';
+            let processedLines = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.includes('|') && line.trim().startsWith('|') && line.trim().endsWith('|')) {
+                    if (!inTable) {
+                        inTable = true;
+                        tableHtml = '<table>';
+                    }
+                    
+                    // Check if this is a separator line
+                    if (line.match(/^\|\s*:?-+:?\s*\|/)) {
+                        continue; // Skip separator lines
+                    }
+                    
+                    // Process table row
+                    const cells = line.split('|').filter((cell, index) => index > 0 && index < line.split('|').length - 1);
+                    const isHeader = i > 0 && lines[i - 1].includes('|') && lines[i + 1] && lines[i + 1].match(/^\|\s*:?-+:?\s*\|/);
+                    
+                    tableHtml += '<tr>';
+                    cells.forEach(cell => {
+                        const tag = isHeader ? 'th' : 'td';
+                        tableHtml += `<${tag}>${cell.trim()}</${tag}>`;
+                    });
+                    tableHtml += '</tr>';
+                } else {
+                    if (inTable) {
+                        inTable = false;
+                        tableHtml += '</table>';
+                        processedLines.push(tableHtml);
+                        tableHtml = '';
+                    }
+                    processedLines.push(line);
+                }
+            }
+            
+            if (inTable) {
+                tableHtml += '</table>';
+                processedLines.push(tableHtml);
+            }
+            
+            text = processedLines.join('\n');
+            
+            // Paragraphs
+            text = text.split('\n\n').map(para => {
+                if (!para.startsWith('<')) {
+                    return `<p>${para}</p>`;
+                }
+                return para;
+            }).join('\n');
+            
+            return text;
         }
 
         // Node interactions
@@ -1006,11 +1136,22 @@
             
             // Handle group expansion
             if (item.type === 'group') {
-                if (item.data.isExpanded) {
-                    renderGroupChildren(item.id);
-                } else {
-                    hideGroupChildren(item.id);
-                }
+                const children = groups[item.id] || item.data.children || [];
+                children.forEach(childId => {
+                    const childNode = document.getElementById(childId);
+                    if (childNode) {
+                        if (item.data.isExpanded) {
+                            childNode.style.display = 'flex';
+                            // Check if child is also a group and was expanded
+                            const childItem = workflow.items[childId];
+                            if (childItem && childItem.type === 'group' && childItem.data.isExpanded) {
+                                childNode.classList.add('expanded');
+                            }
+                        } else {
+                            childNode.style.display = 'none';
+                        }
+                    }
+                });
             }
             
             updateLinks();
@@ -1225,6 +1366,9 @@
                     category: '',
                     topic: ''
                 });
+            } else if (type === 'group') {
+                defaultData.children = [];
+                groups[id] = [];
             }
             
             const item = {
@@ -1234,7 +1378,8 @@
                 y: y,
                 width: 300,
                 height: 200,
-                data: defaultData
+                data: defaultData,
+                parentId: null
             };
             
             workflow.items[id] = item;
@@ -1247,11 +1392,24 @@
             const node = document.getElementById(nodeId);
             if (node) node.remove();
             
+            const item = workflow.items[nodeId];
+            
+            // If it's a group, also delete its children
+            if (item && item.type === 'group') {
+                const children = groups[nodeId] || item.data.children || [];
+                children.forEach(childId => {
+                    deleteNode(childId);
+                });
+            }
+            
             delete workflow.items[nodeId];
             
-            // Remove from groups
+            // Remove from groups and update parent's children array
             Object.keys(groups).forEach(groupId => {
                 groups[groupId] = groups[groupId].filter(id => id !== nodeId);
+                if (workflow.items[groupId]) {
+                    workflow.items[groupId].data.children = groups[groupId];
+                }
             });
             
             // Remove related links
@@ -1260,37 +1418,6 @@
             );
             
             updateLinks();
-        }
-
-        // Groups
-        function renderGroupChildren(groupId) {
-            const groupNode = document.getElementById(groupId);
-            if (!groupNode) return;
-            
-            const groupContent = groupNode.querySelector('.group-content');
-            const childIds = groups[groupId] || [];
-            
-            childIds.forEach(childId => {
-                const childItem = workflow.items[childId];
-                if (childItem) {
-                    // Move child into group
-                    const childNode = document.getElementById(childId);
-                    if (childNode) {
-                        groupContent.appendChild(childNode);
-                    }
-                }
-            });
-        }
-
-        function hideGroupChildren(groupId) {
-            const childIds = groups[groupId] || [];
-            
-            childIds.forEach(childId => {
-                const childNode = document.getElementById(childId);
-                if (childNode) {
-                    viewport.appendChild(childNode);
-                }
-            });
         }
 
         // Links
@@ -1302,6 +1429,9 @@
                 const target = document.getElementById(link.targetId);
                 
                 if (!source || !target) return;
+                
+                // Skip hidden nodes
+                if (source.style.display === 'none' || target.style.display === 'none') return;
                 
                 const sourceRect = source.getBoundingClientRect();
                 const targetRect = target.getBoundingClientRect();
@@ -1397,8 +1527,12 @@
             let totalBaseSP = 0;
             let totalAdjustedSP = 0;
             
-            // Calculate from all tasks
-            Object.values(workflow.items).filter(item => item.type === 'task').forEach(task => {
+            // Calculate from all visible tasks
+            Object.values(workflow.items).filter(item => {
+                if (item.type !== 'task') return false;
+                const node = document.getElementById(item.id);
+                return node && node.style.display !== 'none';
+            }).forEach(task => {
                 const complexity = parseFloat(task.data.complexity) || 0;
                 const risk = parseFloat(task.data.risk) || 0;
                 const duration = parseFloat(task.data.duration) || 0;
@@ -1472,7 +1606,8 @@
                                 title: 'Pasted Image',
                                 dataType: 'image',
                                 content: event.target.result
-                            }
+                            },
+                            parentId: null
                         };
                         
                         workflow.items[id] = pasteItem;
@@ -1498,7 +1633,8 @@
                                 title: 'Pasted Text',
                                 dataType: 'text',
                                 content: text
-                            }
+                            },
+                            parentId: null
                         };
                         
                         workflow.items[id] = pasteItem;
@@ -1513,17 +1649,24 @@
             if (Object.keys(workflow.items).length === 0) return;
             
             let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+            let hasVisibleNodes = false;
             
             Object.values(workflow.items).forEach(item => {
-                minX = Math.min(minX, item.x);
-                minY = Math.min(minY, item.y);
-                maxX = Math.max(maxX, item.x + item.width);
-                maxY = Math.max(maxY, item.y + item.height);
+                const node = document.getElementById(item.id);
+                if (node && node.style.display !== 'none') {
+                    hasVisibleNodes = true;
+                    minX = Math.min(minX, item.x);
+                    minY = Math.min(minY, item.y);
+                    maxX = Math.max(maxX, item.x + item.width);
+                    maxY = Math.max(maxY, item.y + item.height);
+                }
             });
             
-            const padding = 50;
-            canvas.scrollLeft = Math.max(0, minX - padding);
-            canvas.scrollTop = Math.max(0, minY - padding);
+            if (hasVisibleNodes) {
+                const padding = 50;
+                canvas.scrollLeft = Math.max(0, minX - padding);
+                canvas.scrollTop = Math.max(0, minY - padding);
+            }
         }
 
         function resetView() {
