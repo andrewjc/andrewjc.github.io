@@ -92,6 +92,10 @@
         #viewport.panning {
             cursor: grabbing !important;
         }
+        
+        #canvas.linking {
+            cursor: crosshair !important;
+        }
 
         #viewport {
             position: relative;
@@ -128,6 +132,16 @@
             border-color: #1a73e8;
             box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
             z-index: 10;
+        }
+        
+        .node.link-source {
+            border-color: #1a73e8 !important;
+            border-width: 3px !important;
+        }
+        
+        .node.link-target {
+            border-color: #4caf50 !important;
+            border-width: 3px !important;
         }
 
         .node.dragging {
@@ -389,10 +403,16 @@
 
         /* Content Styles */
         .scribble-content {
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            width: 100%;
+            min-height: 100px;
+            padding: 8px;
+            resize: none;
+            font-family: inherit;
+            font-size: 13px;
             line-height: 1.6;
-            color: #202124;
+            background: transparent;
+            border: none;
+            outline: none;
         }
 
         .task-content label {
@@ -520,17 +540,23 @@
             position: absolute;
             top: 0;
             left: 0;
-            pointer-events: none;
+            pointer-events: all;
             z-index: 1;
-            width: 100%;
-            height: 100%;
         }
 
         .link {
             fill: none;
             stroke: #9e9e9e;
-            stroke-width: 2;
+            stroke-width: 3;
             opacity: 0.7;
+            cursor: pointer;
+            pointer-events: stroke;
+        }
+        
+        .link:hover {
+            stroke: #616161;
+            stroke-width: 4;
+            opacity: 1;
         }
 
         .link-arrow {
@@ -717,9 +743,9 @@
         <div id="viewport">
             <svg id="links-svg">
                 <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="10" 
-                            refX="9" refY="3" orient="auto">
-                        <polygon points="0 0, 10 3, 0 6" class="link-arrow"/>
+                    <marker id="arrowhead" markerWidth="12" markerHeight="12" 
+                            refX="11" refY="4" orient="auto">
+                        <polygon points="0 0, 12 4, 0 8" class="link-arrow"/>
                     </marker>
                 </defs>
             </svg>
@@ -743,6 +769,8 @@
     <div id="info-panel">
         <span>Right-click for menu</span>
         <span>•</span>
+        <span>Alt+drag to link nodes</span>
+        <span>•</span>
         <span>Drag background to pan</span>
         <span>•</span>
         <span>Scroll to zoom</span>
@@ -760,8 +788,11 @@
         let selectedNode = null;
         let isDragging = false;
         let isResizing = false;
+        let isLinking = false;
+        let linkSource = null;
+        let tempLinkLine = null;
         let dragOffset = { x: 0, y: 0 };
-        let contextMenuPos = { x: 0, y: 0 };
+        let contextMenuPos = { x: 0, y: 0, groupId: null };
         let groups = {};
         let expandedInlineNodes = {}; // Track which nodes are expanded inline
         let isPanning = false;
@@ -844,11 +875,80 @@
         canvas.addEventListener('mouseup', handlePanEnd);
         canvas.addEventListener('mouseleave', handlePanEnd);
         canvas.addEventListener('scroll', () => autoSave()); // Save scroll position
+        canvas.addEventListener('dragover', handleDragOver);
+        canvas.addEventListener('drop', handleDrop);
         document.addEventListener('paste', handlePaste);
 
         // Context menu listeners
         contextMenu.addEventListener('click', handleMenuClick);
         
+        // Drag and drop handling
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            const files = e.dataTransfer.files;
+            const canvasRect = canvas.getBoundingClientRect();
+            const dropX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale;
+            const dropY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale;
+            
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const id = `item-${workflow.nextItemId++}`;
+                        const item = {
+                            id: id,
+                            type: 'data',
+                            x: dropX + (index * 20),
+                            y: dropY + (index * 20),
+                            width: 300,
+                            height: 200,
+                            data: {
+                                title: file.name,
+                                dataType: 'image',
+                                content: event.target.result
+                            },
+                            parentId: null
+                        };
+                        
+                        workflow.items[id] = item;
+                        createNode(item);
+                        autoSave();
+                    };
+                    reader.readAsDataURL(file);
+                } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const id = `item-${workflow.nextItemId++}`;
+                        const item = {
+                            id: id,
+                            type: 'scribble',
+                            x: dropX + (index * 20),
+                            y: dropY + (index * 20),
+                            width: 400,
+                            height: 300,
+                            data: {
+                                title: file.name,
+                                content: event.target.result,
+                                isExpanded: true
+                            },
+                            parentId: null
+                        };
+                        
+                        workflow.items[id] = item;
+                        createNode(item);
+                        autoSave();
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', handleKeyboard);
 
@@ -1086,7 +1186,7 @@
             // Create content based on type
             switch (item.type) {
                 case 'scribble':
-                    content.innerHTML = `<div class="scribble-content markdown-content">${parseMarkdown(item.data.content || '')}</div>`;
+                    content.innerHTML = `<textarea class="scribble-content">${item.data.content || ''}</textarea>`;
                     break;
                     
                 case 'task':
@@ -1806,6 +1906,12 @@
         function startDrag(node, e) {
             if (e.target.classList.contains('node-control')) return;
             
+            // Check if Alt key is held for linking
+            if (e.altKey) {
+                startLinking(node, e);
+                return;
+            }
+            
             isDragging = true;
             const nodeRect = node.getBoundingClientRect();
             
@@ -1854,6 +1960,118 @@
             document.removeEventListener('mouseup', stopDrag);
         }
 
+        // Linking nodes
+        function startLinking(node, e) {
+            isLinking = true;
+            linkSource = node;
+            
+            // Add linking class to canvas
+            canvas.classList.add('linking');
+            
+            // Create temporary link line
+            tempLinkLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            tempLinkLine.classList.add('link');
+            tempLinkLine.style.strokeDasharray = '5,5';
+            tempLinkLine.style.stroke = '#1a73e8';
+            tempLinkLine.style.opacity = '0.5';
+            linksSvg.appendChild(tempLinkLine);
+            
+            node.style.border = '3px solid #1a73e8';
+            node.classList.add('link-source');
+            
+            document.addEventListener('mousemove', handleLinking);
+            document.addEventListener('mouseup', stopLinking);
+            e.preventDefault();
+        }
+        
+        function handleLinking(e) {
+            if (!isLinking || !linkSource || !tempLinkLine) return;
+            
+            const sourceItem = workflow.items[linkSource.id];
+            if (!sourceItem) return;
+            
+            const canvasRect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale;
+            const mouseY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale;
+            
+            const startX = sourceItem.x + sourceItem.width / 2;
+            const startY = sourceItem.y + sourceItem.height;
+            
+            const pathString = `M ${startX} ${startY} L ${mouseX} ${mouseY}`;
+            tempLinkLine.setAttribute('d', pathString);
+            
+            // Highlight potential target
+            const element = document.elementFromPoint(e.clientX, e.clientY);
+            const targetNode = element?.closest('.node');
+            
+            // Remove previous highlights
+            document.querySelectorAll('.node').forEach(n => {
+                if (n !== linkSource && !n.classList.contains('link-target')) {
+                    n.style.border = '';
+                }
+            });
+            
+            if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) {
+                targetNode.style.border = '3px solid #4caf50';
+                targetNode.classList.add('link-target');
+            } else {
+                document.querySelectorAll('.link-target').forEach(n => {
+                    n.classList.remove('link-target');
+                    if (n !== linkSource) n.style.border = '';
+                });
+            }
+        }
+        
+        function stopLinking(e) {
+            if (!isLinking) return;
+            
+            isLinking = false;
+            canvas.classList.remove('linking');
+            
+            // Remove temporary line
+            if (tempLinkLine) {
+                tempLinkLine.remove();
+                tempLinkLine = null;
+            }
+            
+            // Check if we're over a valid target
+            const element = document.elementFromPoint(e.clientX, e.clientY);
+            const targetNode = element?.closest('.node');
+            
+            if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) {
+                // Create the link
+                const sourceId = linkSource.id;
+                const targetId = targetNode.id;
+                
+                // Check if link already exists
+                const existingLink = workflow.links.find(link => 
+                    link.sourceId === sourceId && link.targetId === targetId
+                );
+                
+                if (!existingLink) {
+                    workflow.links.push({
+                        id: `link-${workflow.nextLinkId++}`,
+                        sourceId: sourceId,
+                        targetId: targetId
+                    });
+                    
+                    updateLinks();
+                    autoSave();
+                }
+            }
+            
+            // Clear all highlights
+            document.querySelectorAll('.node').forEach(n => {
+                n.style.border = '';
+                n.classList.remove('link-target', 'link-source');
+            });
+            
+            linkSource = null;
+            
+            document.removeEventListener('mousemove', handleLinking);
+            document.removeEventListener('mouseup', stopLinking);
+        }
+
         // Resizing
         function startResize(node, e) {
             isResizing = true;
@@ -1900,7 +2118,10 @@
             // Don't show context menu while panning or just after panning
             if (isPanning || (panStart.x !== 0 || panStart.y !== 0)) return;
             
-            if (e.target === canvas || e.target === viewport) {
+            const targetElement = e.target;
+            const groupNode = targetElement.closest('.node.group');
+            
+            if (e.target === canvas || e.target === viewport || groupNode) {
                 const canvasRect = canvas.getBoundingClientRect();
                 
                 // Calculate position in viewport coordinates accounting for zoom/pan
@@ -1908,6 +2129,9 @@
                     x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale,
                     y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale
                 };
+                
+                // Store the group ID if we're right-clicking inside a group
+                contextMenuPos.groupId = groupNode ? groupNode.id : null;
                 
                 contextMenu.style.left = e.clientX + 'px';
                 contextMenu.style.top = e.clientY + 'px';
@@ -2002,9 +2226,7 @@
             viewport.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
             zoomIndicator.textContent = Math.round(scale * 100) + '%';
             
-            // Update the SVG transform to match
-            linksSvg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
-            
+            // Don't transform the SVG - it's already inside the transformed viewport
             updateLinks();
             autoSave();
         }
@@ -2027,7 +2249,8 @@
                 const canvasRect = canvas.getBoundingClientRect();
                 contextMenuPos = {
                     x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale,
-                    y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale
+                    y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale,
+                    groupId: null
                 };
             }
         }
@@ -2038,6 +2261,39 @@
             
             const action = menuItem.dataset.action;
             contextMenu.style.display = 'none';
+            
+            if (action === 'paste') {
+                // Trigger paste at the context menu position
+                navigator.clipboard.readText().then(text => {
+                    if (text) {
+                        const id = `item-${workflow.nextItemId++}`;
+                        const pasteItem = {
+                            id: id,
+                            type: 'data',
+                            x: contextMenuPos.x,
+                            y: contextMenuPos.y,
+                            width: 300,
+                            height: 200,
+                            data: {
+                                title: 'Pasted Text',
+                                dataType: 'text',
+                                content: text
+                            },
+                            parentId: null
+                        };
+                        
+                        workflow.items[id] = pasteItem;
+                        createNode(pasteItem);
+                        autoSave();
+                    }
+                }).catch(err => {
+                    console.log('Paste from context menu requires clipboard permissions');
+                });
+                
+                // Clear group context
+                contextMenuPos.groupId = null;
+                return;
+            }
             
             let type = null;
             switch (action) {
@@ -2054,6 +2310,9 @@
             if (type) {
                 addNode(type, contextMenuPos.x, contextMenuPos.y);
             }
+            
+            // Clear group context after use
+            contextMenuPos.groupId = null;
         }
 
         // Add new node
@@ -2102,11 +2361,35 @@
                 width: 300,
                 height: 200,
                 data: defaultData,
-                parentId: null
+                parentId: contextMenuPos.groupId || null
             };
             
             workflow.items[id] = item;
-            createNode(item);
+            
+            // If adding to a group, update the group's children
+            if (contextMenuPos.groupId) {
+                if (!groups[contextMenuPos.groupId]) {
+                    groups[contextMenuPos.groupId] = [];
+                }
+                groups[contextMenuPos.groupId].push(id);
+                
+                // Update the group's data
+                if (workflow.items[contextMenuPos.groupId]) {
+                    workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
+                }
+                
+                // Re-render the group to show the new child
+                const groupNode = document.getElementById(contextMenuPos.groupId);
+                if (groupNode) {
+                    const groupContent = groupNode.querySelector('.node-content');
+                    groupContent.innerHTML = createGroupContent(workflow.items[contextMenuPos.groupId]);
+                    setupInputListeners(groupNode, workflow.items[contextMenuPos.groupId]);
+                }
+            } else {
+                // Only create the node element if it's not in a group
+                createNode(item);
+            }
+            
             updateLinks();
             autoSave();
         }
@@ -2150,9 +2433,18 @@
 
         // Fixed Links update function
         function updateLinks() {
-            // Clear existing paths
+            // Clear existing paths but keep the defs
             const existingPaths = linksSvg.querySelectorAll('path');
             existingPaths.forEach(path => path.remove());
+            
+            // Ensure defs exist
+            if (!linksSvg.querySelector('defs')) {
+                linksSvg.innerHTML = '<defs><marker id="arrowhead" markerWidth="12" markerHeight="12" refX="11" refY="4" orient="auto"><polygon points="0 0, 12 4, 0 8" class="link-arrow"/></marker></defs>';
+            }
+            
+            // Set SVG size to match viewport
+            linksSvg.setAttribute('width', '8000');
+            linksSvg.setAttribute('height', '8000');
             
             // Get all visible nodes as obstacles (in unscaled coordinates)
             const obstacles = [];
@@ -2213,7 +2505,30 @@
                 path.classList.add('link');
                 path.setAttribute('d', pathString);
                 path.setAttribute('marker-end', 'url(#arrowhead)');
+                path.dataset.linkId = link.id;
                 
+                // Create invisible wider path for easier clicking
+                const clickPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                clickPath.setAttribute('d', pathString);
+                clickPath.style.stroke = 'transparent';
+                clickPath.style.strokeWidth = '12';
+                clickPath.style.cursor = 'pointer';
+                clickPath.style.pointerEvents = 'stroke';
+                
+                // Add click handler to delete link
+                const deleteLink = (e) => {
+                    e.stopPropagation();
+                    if (confirm('Delete this connection?')) {
+                        workflow.links = workflow.links.filter(l => l.id !== link.id);
+                        updateLinks();
+                        autoSave();
+                    }
+                };
+                
+                path.addEventListener('click', deleteLink);
+                clickPath.addEventListener('click', deleteLink);
+                
+                linksSvg.appendChild(clickPath);
                 linksSvg.appendChild(path);
             });
         }
@@ -2256,6 +2571,10 @@
             if (!node) return;
             
             switch (item.type) {
+                case 'scribble':
+                    item.data.content = node.querySelector('.scribble-content')?.value;
+                    break;
+                    
                 case 'task':
                     item.data.complexity = node.querySelector('.complexity')?.value;
                     item.data.risk = node.querySelector('.risk')?.value;
@@ -2390,11 +2709,34 @@
                                 dataType: 'image',
                                 content: event.target.result
                             },
-                            parentId: null
+                            parentId: contextMenuPos.groupId || null
                         };
                         
                         workflow.items[id] = pasteItem;
-                        createNode(pasteItem);
+                        
+                        // Handle group paste
+                        if (contextMenuPos.groupId) {
+                            if (!groups[contextMenuPos.groupId]) {
+                                groups[contextMenuPos.groupId] = [];
+                            }
+                            groups[contextMenuPos.groupId].push(id);
+                            
+                            // Update the group's data
+                            if (workflow.items[contextMenuPos.groupId]) {
+                                workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
+                            }
+                            
+                            // Re-render the group
+                            const groupNode = document.getElementById(contextMenuPos.groupId);
+                            if (groupNode) {
+                                const groupContent = groupNode.querySelector('.node-content');
+                                groupContent.innerHTML = createGroupContent(workflow.items[contextMenuPos.groupId]);
+                                setupInputListeners(groupNode, workflow.items[contextMenuPos.groupId]);
+                            }
+                        } else {
+                            createNode(pasteItem);
+                        }
+                        
                         autoSave();
                     };
                     
@@ -2424,11 +2766,34 @@
                                 dataType: 'text',
                                 content: text
                             },
-                            parentId: null
+                            parentId: contextMenuPos.groupId || null
                         };
                         
                         workflow.items[id] = pasteItem;
-                        createNode(pasteItem);
+                        
+                        // Handle group paste
+                        if (contextMenuPos.groupId) {
+                            if (!groups[contextMenuPos.groupId]) {
+                                groups[contextMenuPos.groupId] = [];
+                            }
+                            groups[contextMenuPos.groupId].push(id);
+                            
+                            // Update the group's data
+                            if (workflow.items[contextMenuPos.groupId]) {
+                                workflow.items[contextMenuPos.groupId].data.children = groups[contextMenuPos.groupId];
+                            }
+                            
+                            // Re-render the group
+                            const groupNode = document.getElementById(contextMenuPos.groupId);
+                            if (groupNode) {
+                                const groupContent = groupNode.querySelector('.node-content');
+                                groupContent.innerHTML = createGroupContent(workflow.items[contextMenuPos.groupId]);
+                                setupInputListeners(groupNode, workflow.items[contextMenuPos.groupId]);
+                            }
+                        } else {
+                            createNode(pasteItem);
+                        }
+                        
                         autoSave();
                     });
                 }
@@ -2503,12 +2868,13 @@
 
         // Utility functions
         function hasExpandableContent(item) {
-            return item.data.content || 
+            return item.type === 'scribble' ||
                    item.type === 'group' || 
                    item.type === 'task' ||
                    item.type === 'estimator' ||
                    item.type === 'adr' ||
-                   item.type.startsWith('knowledge-');
+                   item.type.startsWith('knowledge-') ||
+                   item.type === 'data';
         }
 
         // Initialize with saved workflow or empty
