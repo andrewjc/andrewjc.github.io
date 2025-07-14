@@ -74,9 +74,12 @@
             bottom: 0;
             overflow: auto;
             background-color: #e8eaed;
-            background-image: 
-                radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-image: radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px);
             background-size: 20px 20px;
+        }
+        
+        #canvas.panning {
+            cursor: grabbing !important;
         }
 
         #viewport {
@@ -85,6 +88,8 @@
             min-height: 100%;
             width: 5000px;
             height: 5000px;
+            transform-origin: 0 0;
+            transition: none;
         }
 
         /* Base Node Styles */
@@ -100,7 +105,7 @@
             display: flex;
             flex-direction: column;
             min-width: 200px;
-            min-height: 100px;List
+            min-height: 100px;
         }
 
         .node:hover {
@@ -379,7 +384,7 @@
         }
 
         .knowledge-content,
-        .adr-content {
+        .adr-content textarea {
             width: 100%;
             min-height: 80px;
             border: 1px solid #dadce0;
@@ -389,6 +394,29 @@
             font-family: inherit;
             font-size: 13px;
             line-height: 1.5;
+        }
+
+        .adr-content label {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .adr-content label span {
+            width: 80px;
+            color: #5f6368;
+            font-weight: 500;
+            padding-top: 4px;
+        }
+
+        .adr-content input,
+        .adr-content textarea {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 13px;
         }
 
         /* Resize Handle */
@@ -485,6 +513,21 @@
             display: flex;
             gap: 16px;
         }
+        
+        /* Zoom Indicator */
+        #zoom-indicator {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 12px;
+            color: #5f6368;
+            z-index: 500;
+            font-weight: 500;
+        }
 
         /* Markdown Styles */
         .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 {
@@ -569,6 +612,8 @@
         <button id="save-btn">💾 Save Workflow</button>
         <button id="load-btn">📁 Load Workflow</button>
         <button id="fit-btn">🔍 Fit to Screen</button>
+        <button id="zoom-in-btn">➕ Zoom In</button>
+        <button id="zoom-out-btn">➖ Zoom Out</button>
         <button id="reset-btn">🏠 Reset View</button>
         <input type="file" id="file-input" accept=".json">
     </div>
@@ -603,12 +648,14 @@
     <div id="info-panel">
         <span>Right-click canvas for menu</span>
         <span>•</span>
-        <span>Double-click titles to edit</span>
+        <span>Ctrl+Wheel to zoom</span>
         <span>•</span>
-        <span>Drag nodes to move</span>
+        <span>Middle-click or Shift+drag to pan</span>
         <span>•</span>
-        <span>Click expand arrow or double-click to expand</span>
+        <span>Double-click to expand nodes</span>
     </div>
+
+    <div id="zoom-indicator">100%</div>
 
     <div id="loading">Loading workflow...</div>
 
@@ -621,6 +668,11 @@
         let dragOffset = { x: 0, y: 0 };
         let contextMenuPos = { x: 0, y: 0 };
         let groups = {};
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
 
         // DOM elements
         const canvas = document.getElementById('canvas');
@@ -631,8 +683,11 @@
         const loadBtn = document.getElementById('load-btn');
         const fileInput = document.getElementById('file-input');
         const fitBtn = document.getElementById('fit-btn');
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
         const resetBtn = document.getElementById('reset-btn');
         const loading = document.getElementById('loading');
+        const zoomIndicator = document.getElementById('zoom-indicator');
 
         // Node templates
         const nodeIcons = {
@@ -652,15 +707,30 @@
         loadBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', handleFileLoad);
         fitBtn.addEventListener('click', fitToScreen);
+        zoomInBtn.addEventListener('click', () => {
+            scale = Math.min(3, scale * 1.2);
+            updateViewportTransform();
+        });
+        zoomOutBtn.addEventListener('click', () => {
+            scale = Math.max(0.2, scale * 0.8);
+            updateViewportTransform();
+        });
         resetBtn.addEventListener('click', resetView);
 
         // Canvas event listeners
         canvas.addEventListener('contextmenu', handleContextMenu);
         canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('wheel', handleWheel);
+        canvas.addEventListener('mousedown', handlePanStart);
+        canvas.addEventListener('mousemove', handlePan);
+        canvas.addEventListener('mouseup', handlePanEnd);
         document.addEventListener('paste', handlePaste);
 
         // Context menu listeners
         contextMenu.addEventListener('click', handleMenuClick);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', handleKeyboard);
 
         // File handling
         function saveWorkflow() {
@@ -714,6 +784,7 @@
                     
                     renderWorkflow();
                     loading.style.display = 'none';
+                    updateViewportTransform();
                     fitToScreen();
                 } catch (error) {
                     alert('Error loading workflow: ' + error.message);
@@ -1011,47 +1082,6 @@
             // Lists
             text = text.replace(/^\* (.+)$/gm, '<li>$1</li>');
             text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-        function parseMarkdown(text) {
-            if (!text) return '';
-            
-            // Escape HTML
-            text = text.replace(/&/g, '&amp;')
-                      .replace(/</g, '&lt;')
-                      .replace(/>/g, '&gt;');
-            
-            // Headers
-            text = text.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-            text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-            text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-            text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-            
-            // Bold
-            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            
-            // Lists
-            text = text.replace(/^\* (.+)$/gm, '<li>$1</li>');
-            text = text.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-            
-            // Code
-            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-            
-            // Tables (simple support)
-            text = text.replace(/\|(.+)\|/g, (match, content) => {
-                const cells = content.split('|').map(cell => `<td>${cell.trim()}</td>`).join('');
-                return `<tr>${cells}</tr>`;
-            });
-            text = text.replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>');
-            
-            // Paragraphs
-            text = text.split('\n\n').map(para => {
-                if (!para.startsWith('<')) {
-                    return `<p>${para}</p>`;
-                }
-                return para;
-            }).join('\n');
-            
-            return text;
-        };
             
             // Code
             text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -1198,12 +1228,12 @@
             if (e.target.classList.contains('node-control')) return;
             
             isDragging = true;
-            const rect = node.getBoundingClientRect();
-            const canvasRect = canvas.getBoundingClientRect();
+            const nodeRect = node.getBoundingClientRect();
             
+            // Calculate the offset within the node where the mouse was clicked
             dragOffset = {
-                x: e.clientX - rect.left + canvasRect.left + canvas.scrollLeft,
-                y: e.clientY - rect.top + canvasRect.top + canvas.scrollTop
+                x: e.clientX - nodeRect.left,
+                y: e.clientY - nodeRect.top
             };
             
             node.classList.add('dragging');
@@ -1218,8 +1248,10 @@
             if (!isDragging || !selectedNode) return;
             
             const canvasRect = canvas.getBoundingClientRect();
-            const x = e.clientX - canvasRect.left + canvas.scrollLeft - dragOffset.x;
-            const y = e.clientY - canvasRect.top + canvas.scrollTop - dragOffset.y;
+            
+            // Calculate position accounting for scroll and scale
+            const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x;
+            const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y;
             
             selectedNode.style.left = Math.max(0, x) + 'px';
             selectedNode.style.top = Math.max(0, y) + 'px';
@@ -1255,11 +1287,12 @@
         function handleResize(e) {
             if (!isResizing || !selectedNode) return;
             
-            const rect = selectedNode.getBoundingClientRect();
+            const nodeRect = selectedNode.getBoundingClientRect();
             const canvasRect = canvas.getBoundingClientRect();
             
-            const width = Math.max(200, e.clientX - rect.left);
-            const height = Math.max(100, e.clientY - rect.top);
+            // Calculate new dimensions accounting for scale
+            const width = Math.max(200, (e.clientX - nodeRect.left) / scale);
+            const height = Math.max(100, (e.clientY - nodeRect.top) / scale);
             
             selectedNode.style.width = width + 'px';
             selectedNode.style.height = height + 'px';
@@ -1285,15 +1318,77 @@
             
             if (e.target === canvas || e.target === viewport) {
                 const canvasRect = canvas.getBoundingClientRect();
+                
+                // Calculate position in viewport coordinates accounting for zoom/pan
                 contextMenuPos = {
-                    x: e.clientX - canvasRect.left + canvas.scrollLeft,
-                    y: e.clientY - canvasRect.top + canvas.scrollTop
+                    x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale,
+                    y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale
                 };
                 
                 contextMenu.style.left = e.clientX + 'px';
                 contextMenu.style.top = e.clientY + 'px';
                 contextMenu.style.display = 'block';
             }
+        }
+
+        // Pan and Zoom
+        function handleWheel(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                const newScale = Math.min(Math.max(0.2, scale * delta), 3);
+                
+                if (newScale !== scale) {
+                    const canvasRect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - canvasRect.left + canvas.scrollLeft;
+                    const mouseY = e.clientY - canvasRect.top + canvas.scrollTop;
+                    
+                    // Adjust translation to zoom towards mouse position
+                    const scaleDiff = newScale - scale;
+                    translateX -= (mouseX - translateX) * (scaleDiff / scale);
+                    translateY -= (mouseY - translateY) * (scaleDiff / scale);
+                    
+                    scale = newScale;
+                    updateViewportTransform();
+                }
+            }
+        }
+
+        function handlePanStart(e) {
+            if (e.button === 1 || (e.button === 0 && e.shiftKey)) { // Middle button or shift+left
+                e.preventDefault();
+                isPanning = true;
+                panStart = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+                canvas.classList.add('panning');
+            }
+        }
+
+        function handlePan(e) {
+            if (!isPanning) return;
+            
+            const dx = e.clientX - panStart.x;
+            const dy = e.clientY - panStart.y;
+            
+            canvas.scrollLeft -= dx;
+            canvas.scrollTop -= dy;
+            
+            panStart = { x: e.clientX, y: e.clientY };
+        }
+
+        function handlePanEnd(e) {
+            if (isPanning) {
+                isPanning = false;
+                canvas.style.cursor = 'default';
+                canvas.classList.remove('panning');
+            }
+        }
+
+        function updateViewportTransform() {
+            viewport.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+            zoomIndicator.textContent = Math.round(scale * 100) + '%';
+            updateLinks();
         }
 
         function handleCanvasClick(e) {
@@ -1306,6 +1401,13 @@
                     selectedNode.classList.remove('selected');
                     selectedNode = null;
                 }
+                
+                // Update context position for pasting
+                const canvasRect = canvas.getBoundingClientRect();
+                contextMenuPos = {
+                    x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale,
+                    y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale
+                };
             }
         }
 
@@ -1433,14 +1535,16 @@
                 // Skip hidden nodes
                 if (source.style.display === 'none' || target.style.display === 'none') return;
                 
-                const sourceRect = source.getBoundingClientRect();
-                const targetRect = target.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
+                const sourceItem = workflow.items[link.sourceId];
+                const targetItem = workflow.items[link.targetId];
                 
-                const sx = sourceRect.left - canvasRect.left + canvas.scrollLeft + sourceRect.width / 2;
-                const sy = sourceRect.bottom - canvasRect.top + canvas.scrollTop;
-                const tx = targetRect.left - canvasRect.left + canvas.scrollLeft + targetRect.width / 2;
-                const ty = targetRect.top - canvasRect.top + canvas.scrollTop;
+                if (!sourceItem || !targetItem) return;
+                
+                // Calculate connection points based on stored positions
+                const sx = (sourceItem.x + sourceItem.width / 2) * scale + translateX;
+                const sy = (sourceItem.y + sourceItem.height) * scale + translateY;
+                const tx = (targetItem.x + targetItem.width / 2) * scale + translateX;
+                const ty = (targetItem.y) * scale + translateY;
                 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.classList.add('link');
@@ -1450,9 +1554,10 @@
                 linksSvg.appendChild(path);
             });
             
-            // Update SVG size
-            linksSvg.setAttribute('width', viewport.offsetWidth);
-            linksSvg.setAttribute('height', viewport.offsetHeight);
+            // Update SVG size to match viewport
+            const viewportRect = viewport.getBoundingClientRect();
+            linksSvg.setAttribute('width', viewportRect.width);
+            linksSvg.setAttribute('height', viewportRect.height);
         }
 
         // Input listeners
@@ -1595,11 +1700,17 @@
                     
                     reader.onload = (event) => {
                         const id = `item-${workflow.nextItemId++}`;
+                        
+                        // Use last click position or center of visible area
+                        const canvasRect = canvas.getBoundingClientRect();
+                        const defaultX = (canvasRect.width / 2 + canvas.scrollLeft - translateX) / scale;
+                        const defaultY = (canvasRect.height / 2 + canvas.scrollTop - translateY) / scale;
+                        
                         const pasteItem = {
                             id: id,
                             type: 'data',
-                            x: contextMenuPos.x || 100,
-                            y: contextMenuPos.y || 100,
+                            x: contextMenuPos.x || defaultX,
+                            y: contextMenuPos.y || defaultY,
                             width: 300,
                             height: 200,
                             data: {
@@ -1622,11 +1733,17 @@
                     e.preventDefault();
                     item.getAsString((text) => {
                         const id = `item-${workflow.nextItemId++}`;
+                        
+                        // Use last click position or center of visible area
+                        const canvasRect = canvas.getBoundingClientRect();
+                        const defaultX = (canvasRect.width / 2 + canvas.scrollLeft - translateX) / scale;
+                        const defaultY = (canvasRect.height / 2 + canvas.scrollTop - translateY) / scale;
+                        
                         const pasteItem = {
                             id: id,
                             type: 'data',
-                            x: contextMenuPos.x || 100,
-                            y: contextMenuPos.y || 100,
+                            x: contextMenuPos.x || defaultX,
+                            y: contextMenuPos.y || defaultY,
                             width: 300,
                             height: 200,
                             data: {
@@ -1672,7 +1789,48 @@
         function resetView() {
             canvas.scrollLeft = 0;
             canvas.scrollTop = 0;
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            updateViewportTransform();
         }
+
+        // Keyboard shortcuts
+        function handleKeyboard(e) {
+            const activeElement = document.activeElement;
+            if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.contentEditable === 'true') return;
+            
+            // Show pan cursor when shift is held
+            if (e.key === 'Shift' && !isPanning) {
+                canvas.style.cursor = 'grab';
+            }
+            
+            // Zoom shortcuts
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '+' || e.key === '=') {
+                    e.preventDefault();
+                    scale = Math.min(3, scale * 1.1);
+                    updateViewportTransform();
+                } else if (e.key === '-') {
+                    e.preventDefault();
+                    scale = Math.max(0.2, scale * 0.9);
+                    updateViewportTransform();
+                } else if (e.key === '0') {
+                    e.preventDefault();
+                    scale = 1;
+                    translateX = 0;
+                    translateY = 0;
+                    updateViewportTransform();
+                }
+            }
+        }
+        
+        // Reset cursor when shift is released
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift' && !isPanning) {
+                canvas.style.cursor = 'default';
+            }
+        });
 
         // Utility functions
         function hasExpandableContent(item) {
@@ -1686,6 +1844,7 @@
 
         // Initialize with empty workflow
         renderWorkflow();
+        updateViewportTransform();
     </script>
 </body>
 </html>
