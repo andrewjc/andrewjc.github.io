@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knowledge Tree Workflow Visualizer</title>
+    <title>Advanced Knowledge Tree Workflow System</title>
     <style>
         * {
             box-sizing: border-box;
@@ -12,9 +12,10 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f2f5;
             overflow: hidden;
+            user-select: none;
         }
 
         /* Top Bar */
@@ -23,36 +24,41 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 50px;
-            background: linear-gradient(to bottom, #2c3e50, #34495e);
+            height: 48px;
+            background: linear-gradient(to right, #1e3c72, #2a5298);
             color: white;
             display: flex;
             align-items: center;
-            padding: 0 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            padding: 0 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             z-index: 1000;
         }
 
         #topbar h1 {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 500;
             margin-right: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         #topbar button {
-            background: #3498db;
+            background: rgba(255,255,255,0.2);
             color: white;
-            border: none;
-            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 14px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
-            margin-left: 10px;
-            transition: background 0.2s;
+            font-size: 13px;
+            margin-left: 8px;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
         }
 
         #topbar button:hover {
-            background: #2980b9;
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
         }
 
         input[type="file"] {
@@ -62,15 +68,14 @@
         /* Canvas */
         #canvas {
             position: absolute;
-            top: 50px;
+            top: 48px;
             left: 0;
             right: 0;
             bottom: 0;
             overflow: auto;
-            background-color: #ecf0f1;
+            background-color: #e8eaed;
             background-image: 
-                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+                radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px);
             background-size: 20px 20px;
         }
 
@@ -78,133 +83,324 @@
             position: relative;
             min-width: 100%;
             min-height: 100%;
-            width: max-content;
-            height: max-content;
+            width: 5000px;
+            height: 5000px;
         }
 
-        /* Nodes */
+        /* Base Node Styles */
         .node {
             position: absolute;
             background: white;
-            border: 2px solid #bdc3c7;
+            border: 2px solid #ddd;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: default;
+            transition: box-shadow 0.2s, transform 0.2s;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            min-width: 200px;
+            min-height: 100px;
         }
 
         .node:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
 
         .node.selected {
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+            z-index: 10;
         }
 
-        .node.expanded {
+        .node.dragging {
+            opacity: 0.9;
+            cursor: grabbing;
             z-index: 100;
         }
 
-        /* Node types */
-        .node.scribble {
-            background: #fffef0;
-            border-color: #f39c12;
-        }
-
-        .node.group {
-            background: #e8f4fd;
-            border-color: #3498db;
-        }
-
+        /* Node Header */
         .node-header {
-            padding: 12px 16px;
-            background: rgba(0,0,0,0.03);
-            border-bottom: 1px solid rgba(0,0,0,0.06);
-            cursor: move;
+            padding: 10px 14px;
+            background: linear-gradient(to bottom, #fafafa, #f5f5f5);
+            border-bottom: 1px solid #e0e0e0;
+            cursor: grab;
             user-select: none;
             display: flex;
             align-items: center;
             gap: 8px;
+            position: relative;
         }
 
-        .node-icon {
+        .node.dragging .node-header {
+            cursor: grabbing;
+        }
+
+        .node-type-icon {
             width: 20px;
             height: 20px;
-            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
         }
 
         .node-title {
             font-weight: 600;
             font-size: 14px;
-            color: #2c3e50;
+            color: #202124;
             flex-grow: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            padding: 2px 4px;
+            border-radius: 3px;
         }
 
-        .node-expand-icon {
-            width: 16px;
-            height: 16px;
-            opacity: 0.5;
-            transition: transform 0.2s;
+        .node-title[contenteditable="true"] {
+            background: rgba(26, 115, 232, 0.1);
+            outline: 1px solid rgba(26, 115, 232, 0.5);
+            cursor: text;
+            user-select: text;
+        }
+
+        .node-controls {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .node-control {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.2s;
+            color: #5f6368;
         }
 
-        .node.expanded .node-expand-icon {
+        .node-control:hover {
+            background: rgba(0,0,0,0.08);
+        }
+
+        .expand-icon {
+            transition: transform 0.2s;
+        }
+
+        .node.expanded .expand-icon {
             transform: rotate(90deg);
         }
 
+        /* Node Content */
         .node-content {
-            padding: 16px;
-            display: none;
-            max-height: 400px;
+            padding: 12px;
+            flex-grow: 1;
             overflow-y: auto;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #34495e;
+            user-select: text;
+            display: none;
         }
 
         .node.expanded .node-content {
             display: block;
         }
 
-        .node-content h1, .node-content h2, .node-content h3, .node-content h4 {
+        /* Node Type Specific Styles */
+        .node.scribble {
+            background: #fffef0;
+            border-color: #f9cc30;
+        }
+
+        .node.scribble .node-header {
+            background: linear-gradient(to bottom, #fff9c4, #fff59d);
+        }
+
+        .node.group {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+
+        .node.group .node-header {
+            background: linear-gradient(to bottom, #bbdefb, #90caf9);
+        }
+
+        .node.group.expanded {
+            min-width: 400px;
+            min-height: 300px;
+        }
+
+        .node.task {
+            background: #f3e5f5;
+            border-color: #9c27b0;
+        }
+
+        .node.task .node-header {
+            background: linear-gradient(to bottom, #e1bee7, #ce93d8);
+        }
+
+        .node.estimator {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .node.estimator .node-header {
+            background: linear-gradient(to bottom, #c8e6c9, #a5d6a7);
+        }
+
+        .node.data {
+            background: #fff3e0;
+            border-color: #ff9800;
+        }
+
+        .node.data .node-header {
+            background: linear-gradient(to bottom, #ffe0b2, #ffcc80);
+        }
+
+        .node.knowledge-section {
+            background: #e0f2f1;
+            border-color: #009688;
+        }
+
+        .node.knowledge-subsection {
+            background: #e8eaf6;
+            border-color: #3f51b5;
+        }
+
+        .node.knowledge-item {
+            background: #fce4ec;
+            border-color: #e91e63;
+        }
+
+        .node.adr {
+            background: #efebe9;
+            border-color: #795548;
+        }
+
+        /* Content Styles */
+        .scribble-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+            color: #202124;
+        }
+
+        .task-content label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .task-content label span {
+            width: 120px;
+            color: #5f6368;
+            font-weight: 500;
+        }
+
+        .task-content input,
+        .task-content select {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .task-description {
+            font-size: 12px;
+            color: #5f6368;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(0,0,0,0.03);
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+
+        .estimator-content h4 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #202124;
+        }
+
+        .estimator-result {
             margin-top: 16px;
-            margin-bottom: 8px;
-            color: #2c3e50;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
         }
 
-        .node-content h1 { font-size: 20px; }
-        .node-content h2 { font-size: 18px; }
-        .node-content h3 { font-size: 16px; }
-        .node-content h4 { font-size: 14px; }
-
-        .node-content ul, .node-content ol {
-            margin-left: 24px;
-            margin-bottom: 8px;
+        .estimator-result p {
+            margin: 4px 0;
+            font-size: 13px;
         }
 
-        .node-content li {
-            margin-bottom: 4px;
-        }
-
-        .node-content strong {
-            color: #2c3e50;
+        .estimator-result strong {
+            color: #1976d2;
             font-weight: 600;
         }
 
-        .node-content code {
-            background: #ecf0f1;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-family: 'Consolas', 'Monaco', monospace;
+        .data-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .data-text {
+            width: 100%;
+            min-height: 100px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            padding: 8px;
+            resize: none;
+            font-family: inherit;
             font-size: 13px;
+        }
+
+        .group-content {
+            position: relative;
+            height: 100%;
+            background: rgba(255,255,255,0.5);
+            border: 2px dashed #90caf9;
+            border-radius: 4px;
+            margin: 8px;
+            overflow: auto;
+        }
+
+        .group-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #90caf9;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .knowledge-content,
+        .adr-content {
+            width: 100%;
+            min-height: 80px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            padding: 8px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* Resize Handle */
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 16px;
+            height: 16px;
+            cursor: nwse-resize;
+            background: linear-gradient(135deg, transparent 50%, #bdbdbd 50%);
+            border-radius: 0 0 6px 0;
         }
 
         /* Links */
@@ -218,14 +414,46 @@
 
         .link {
             fill: none;
-            stroke: #7f8c8d;
+            stroke: #9e9e9e;
             stroke-width: 2;
-            opacity: 0.6;
+            opacity: 0.7;
         }
 
         .link-arrow {
-            fill: #7f8c8d;
-            opacity: 0.6;
+            fill: #9e9e9e;
+            opacity: 0.7;
+        }
+
+        /* Context Menu */
+        #context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            padding: 4px 0;
+            min-width: 180px;
+            z-index: 1001;
+            display: none;
+        }
+
+        .menu-item {
+            padding: 8px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .menu-item:hover {
+            background: #f5f5f5;
+        }
+
+        .menu-separator {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 4px 0;
         }
 
         /* Loading */
@@ -235,9 +463,9 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: white;
-            padding: 20px 40px;
+            padding: 24px 32px;
             border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             display: none;
             z-index: 2000;
         }
@@ -245,21 +473,80 @@
         /* Info Panel */
         #info-panel {
             position: fixed;
-            bottom: 20px;
-            left: 20px;
+            bottom: 16px;
+            left: 16px;
             background: white;
             padding: 12px 16px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             font-size: 12px;
-            color: #7f8c8d;
+            color: #5f6368;
             z-index: 500;
+            display: flex;
+            gap: 16px;
+        }
+
+        /* Markdown Styles */
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 {
+            margin: 16px 0 8px 0;
+            color: #202124;
+        }
+
+        .markdown-content h1 { font-size: 20px; }
+        .markdown-content h2 { font-size: 18px; }
+        .markdown-content h3 { font-size: 16px; }
+        .markdown-content h4 { font-size: 14px; font-weight: 600; }
+
+        .markdown-content ul, .markdown-content ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .markdown-content li {
+            margin: 4px 0;
+            line-height: 1.5;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+            color: #202124;
+        }
+
+        .markdown-content code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .markdown-content p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid #dadce0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: #f5f5f5;
+            font-weight: 600;
         }
 
         /* Scrollbars */
         ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
         }
 
         ::-webkit-scrollbar-track {
@@ -267,21 +554,22 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #bdc3c7;
-            border-radius: 5px;
+            background: #c1c1c1;
+            border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #95a5a6;
+            background: #a8a8a8;
         }
     </style>
 </head>
 <body>
     <div id="topbar">
-        <h1>Knowledge Tree Workflow Visualizer</h1>
-        <button id="load-btn">Load Workflow</button>
-        <button id="fit-btn">Fit to Screen</button>
-        <button id="reset-btn">Reset View</button>
+        <h1>📊 Advanced Knowledge Tree Workflow System</h1>
+        <button id="save-btn">💾 Save Workflow</button>
+        <button id="load-btn">📁 Load Workflow</button>
+        <button id="fit-btn">🔍 Fit to Screen</button>
+        <button id="reset-btn">🏠 Reset View</button>
         <input type="file" id="file-input" accept=".json">
     </div>
 
@@ -290,7 +578,7 @@
             <svg id="links-svg">
                 <defs>
                     <marker id="arrowhead" markerWidth="10" markerHeight="10" 
-                            refX="8" refY="3" orient="auto">
+                            refX="9" refY="3" orient="auto">
                         <polygon points="0 0, 10 3, 0 6" class="link-arrow"/>
                     </marker>
                 </defs>
@@ -298,36 +586,101 @@
         </div>
     </div>
 
+    <div id="context-menu">
+        <div class="menu-item" data-action="add-scribble">📝 Add Scribble Pad</div>
+        <div class="menu-item" data-action="add-task">✓ Add Task</div>
+        <div class="menu-item" data-action="add-group">📁 Add Group</div>
+        <div class="menu-item" data-action="add-estimator">📊 Add Estimator</div>
+        <div class="menu-separator"></div>
+        <div class="menu-item" data-action="add-knowledge-section">📚 Knowledge Section</div>
+        <div class="menu-item" data-action="add-knowledge-subsection">📖 Knowledge Subsection</div>
+        <div class="menu-item" data-action="add-knowledge-item">📄 Knowledge Item</div>
+        <div class="menu-item" data-action="add-adr">🏛️ Add ADR</div>
+        <div class="menu-separator"></div>
+        <div class="menu-item" data-action="paste">📋 Paste Data</div>
+    </div>
+
     <div id="info-panel">
-        Click nodes to select • Double-click to expand/collapse
+        <span>Right-click canvas for menu</span>
+        <span>•</span>
+        <span>Double-click titles to edit</span>
+        <span>•</span>
+        <span>Drag nodes to move</span>
+        <span>•</span>
+        <span>Click expand arrow or double-click to expand</span>
     </div>
 
     <div id="loading">Loading workflow...</div>
 
     <script>
         // State management
-        let workflow = { items: {}, links: [] };
+        let workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
         let selectedNode = null;
         let isDragging = false;
+        let isResizing = false;
         let dragOffset = { x: 0, y: 0 };
+        let contextMenuPos = { x: 0, y: 0 };
+        let groups = {};
 
         // DOM elements
         const canvas = document.getElementById('canvas');
         const viewport = document.getElementById('viewport');
         const linksSvg = document.getElementById('links-svg');
+        const contextMenu = document.getElementById('context-menu');
+        const saveBtn = document.getElementById('save-btn');
         const loadBtn = document.getElementById('load-btn');
         const fileInput = document.getElementById('file-input');
         const fitBtn = document.getElementById('fit-btn');
         const resetBtn = document.getElementById('reset-btn');
         const loading = document.getElementById('loading');
 
+        // Node templates
+        const nodeIcons = {
+            'scribble': '📝',
+            'task': '✓',
+            'group': '📁',
+            'estimator': '📊',
+            'data': '📋',
+            'knowledge-section': '📚',
+            'knowledge-subsection': '📖',
+            'knowledge-item': '📄',
+            'adr': '🏛️'
+        };
+
         // Initialize
+        saveBtn.addEventListener('click', saveWorkflow);
         loadBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', handleFileLoad);
         fitBtn.addEventListener('click', fitToScreen);
         resetBtn.addEventListener('click', resetView);
 
-        // File loading
+        // Canvas event listeners
+        canvas.addEventListener('contextmenu', handleContextMenu);
+        canvas.addEventListener('click', handleCanvasClick);
+        document.addEventListener('paste', handlePaste);
+
+        // Context menu listeners
+        contextMenu.addEventListener('click', handleMenuClick);
+
+        // File handling
+        function saveWorkflow() {
+            const state = {
+                items: workflow.items,
+                links: workflow.links,
+                groups: groups,
+                nextItemId: workflow.nextItemId,
+                nextLinkId: workflow.nextLinkId
+            };
+            
+            const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'workflow.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         function handleFileLoad(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -337,7 +690,14 @@
             
             reader.onload = (event) => {
                 try {
-                    workflow = JSON.parse(event.target.result);
+                    const data = JSON.parse(event.target.result);
+                    workflow = {
+                        items: data.items || {},
+                        links: data.links || [],
+                        nextItemId: data.nextItemId || 1,
+                        nextLinkId: data.nextLinkId || 1
+                    };
+                    groups = data.groups || {};
                     renderWorkflow();
                     loading.style.display = 'none';
                     fitToScreen();
@@ -353,8 +713,7 @@
         // Render workflow
         function renderWorkflow() {
             // Clear existing content
-            viewport.innerHTML = '';
-            viewport.appendChild(linksSvg);
+            viewport.querySelectorAll('.node').forEach(node => node.remove());
             
             // Create nodes
             Object.values(workflow.items).forEach(item => {
@@ -363,12 +722,9 @@
             
             // Update links
             updateLinks();
-            
-            // Update viewport size
-            updateViewportSize();
         }
 
-        // Create node element
+        // Create node
         function createNode(item) {
             const node = document.createElement('div');
             node.className = `node ${item.type}`;
@@ -382,54 +738,211 @@
             const header = document.createElement('div');
             header.className = 'node-header';
             
-            // Icon
             const icon = document.createElement('div');
-            icon.className = 'node-icon';
-            icon.innerHTML = item.type === 'group' ? '📁' : '📝';
+            icon.className = 'node-type-icon';
+            icon.textContent = nodeIcons[item.type] || '📄';
             
-            // Title
             const title = document.createElement('div');
             title.className = 'node-title';
-            title.textContent = item.data.title;
+            title.textContent = item.data.title || 'Untitled';
             
-            // Expand icon
-            const expandIcon = document.createElement('div');
-            expandIcon.className = 'node-expand-icon';
-            expandIcon.innerHTML = '▶';
+            const controls = document.createElement('div');
+            controls.className = 'node-controls';
+            
+            // Add expand control for expandable types
+            if (hasExpandableContent(item)) {
+                const expandBtn = document.createElement('div');
+                expandBtn.className = 'node-control expand-icon';
+                expandBtn.innerHTML = '▶';
+                expandBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleNode(node);
+                });
+                controls.appendChild(expandBtn);
+            }
+            
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'node-control';
+            deleteBtn.innerHTML = '✕';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('Delete this node?')) {
+                    deleteNode(item.id);
+                }
+            });
+            controls.appendChild(deleteBtn);
             
             header.appendChild(icon);
             header.appendChild(title);
-            if (item.data.content || (item.type === 'group' && item.data.children)) {
-                header.appendChild(expandIcon);
-            }
+            header.appendChild(controls);
             
             // Content
             const content = document.createElement('div');
             content.className = 'node-content';
             
-            if (item.data.content) {
-                content.innerHTML = parseMarkdown(item.data.content);
-            } else if (item.type === 'group' && item.data.children) {
-                content.innerHTML = `<p>Contains ${item.data.children.length} items</p>`;
+            // Create content based on type
+            switch (item.type) {
+                case 'scribble':
+                    content.innerHTML = `<div class="scribble-content markdown-content">${parseMarkdown(item.data.content || '')}</div>`;
+                    break;
+                    
+                case 'task':
+                    content.innerHTML = createTaskContent(item.data);
+                    break;
+                    
+                case 'estimator':
+                    content.innerHTML = createEstimatorContent(item.data);
+                    break;
+                    
+                case 'data':
+                    content.innerHTML = createDataContent(item.data);
+                    break;
+                    
+                case 'group':
+                    content.innerHTML = createGroupContent(item);
+                    break;
+                    
+                case 'knowledge-section':
+                case 'knowledge-subsection':
+                case 'knowledge-item':
+                    content.innerHTML = `<textarea class="knowledge-content">${item.data.content || ''}</textarea>`;
+                    break;
+                    
+                case 'adr':
+                    content.innerHTML = createADRContent(item.data);
+                    break;
             }
+            
+            // Resize handle
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle';
             
             node.appendChild(header);
             node.appendChild(content);
+            node.appendChild(resizeHandle);
             
             // Event listeners
             node.addEventListener('click', (e) => selectNode(node, e));
-            node.addEventListener('dblclick', (e) => toggleNode(node, e));
             header.addEventListener('mousedown', (e) => startDrag(node, e));
+            resizeHandle.addEventListener('mousedown', (e) => startResize(node, e));
+            title.addEventListener('dblclick', (e) => editTitle(title, item, e));
+            
+            // Double-click to expand
+            if (hasExpandableContent(item)) {
+                node.addEventListener('dblclick', (e) => {
+                    if (!e.target.classList.contains('node-title')) {
+                        toggleNode(node);
+                    }
+                });
+            }
             
             // Restore expanded state
             if (item.data.isExpanded) {
                 node.classList.add('expanded');
             }
             
+            // Setup change listeners for inputs
+            setupInputListeners(node, item);
+            
             viewport.appendChild(node);
+            
+            // If it's a group and expanded, render children
+            if (item.type === 'group' && item.data.isExpanded && groups[item.id]) {
+                renderGroupChildren(item.id);
+            }
         }
 
-        // Parse basic markdown
+        // Content creators
+        function createTaskContent(data) {
+            return `
+                ${data.description ? `<div class="task-description">${data.description}</div>` : ''}
+                <div class="task-content">
+                    <label><span>Complexity (SP):</span>
+                        <select class="complexity">
+                            ${[1,2,3,5,8,13,21,34,55,89].map(n => 
+                                `<option value="${n}" ${data.complexity == n ? 'selected' : ''}>${n}</option>`
+                            ).join('')}
+                        </select>
+                    </label>
+                    <label><span>Risk Factor:</span>
+                        <input type="number" class="risk" value="${data.risk || 0.1}" min="0" max="1" step="0.05">
+                    </label>
+                    <label><span>Priority:</span>
+                        <input type="number" class="priority" value="${data.priority || 3}" min="1" max="5">
+                    </label>
+                    <label><span>Duration (days):</span>
+                        <input type="number" class="duration" value="${data.duration || 1}" min="0.5" step="0.5">
+                    </label>
+                </div>
+            `;
+        }
+
+        function createEstimatorContent(data) {
+            return `
+                <div class="estimator-content">
+                    <h4>Team & Project Factors</h4>
+                    <label><span>Team Members:</span>
+                        <input type="number" class="team-members" value="${data.teamMembers || 5}" min="1">
+                    </label>
+                    <label><span>Hours/Day/Member:</span>
+                        <input type="number" class="working-hours" value="${data.workingHours || 8}" min="1" step="0.5">
+                    </label>
+                    <label><span>Overhead Factor:</span>
+                        <input type="number" class="overhead" value="${data.overhead || 0.15}" min="0" max="0.99" step="0.01">
+                    </label>
+                    <label><span>Productivity:</span>
+                        <input type="number" class="productivity" value="${data.productivity || 0.85}" min="0.1" max="1.5" step="0.01">
+                    </label>
+                    <label><span>Maturity/Learn:</span>
+                        <input type="number" class="learning-curve" value="${data.learningCurve || 1.0}" min="0.5" step="0.05">
+                    </label>
+                    <label><span>Hours per SP:</span>
+                        <input type="number" class="hours-per-sp" value="${data.hoursPerStoryPoint || 4}" min="0.5" step="0.1">
+                    </label>
+                    <div class="estimator-result">
+                        <p>Total Base SP: <strong class="base-sp">0</strong></p>
+                        <p>Total Adjusted SP: <strong class="adj-sp">0</strong></p>
+                        <p>Team Velocity: <strong class="velocity">0</strong></p>
+                        <p>Est. Duration: <strong class="duration">N/A</strong></p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createDataContent(data) {
+            if (data.dataType === 'image') {
+                return `<img class="data-image" src="${data.content}" alt="Pasted image">`;
+            } else {
+                return `<textarea class="data-text">${data.content || ''}</textarea>`;
+            }
+        }
+
+        function createGroupContent(item) {
+            const childCount = groups[item.id] ? groups[item.id].length : 0;
+            return `
+                <div class="group-content">
+                    ${childCount === 0 ? '<div class="group-placeholder">Drop items here</div>' : ''}
+                </div>
+            `;
+        }
+
+        function createADRContent(data) {
+            return `
+                <div class="adr-content">
+                    <label><span>Code:</span>
+                        <input type="text" class="adr-code" value="${data.code || ''}">
+                    </label>
+                    <label><span>Category:</span>
+                        <input type="text" class="adr-category" value="${data.category || ''}">
+                    </label>
+                    <label><span>Topic:</span>
+                        <textarea class="adr-topic">${data.topic || ''}</textarea>
+                    </label>
+                </div>
+            `;
+        }
+
+        // Markdown parser
         function parseMarkdown(text) {
             if (!text) return '';
             
@@ -454,6 +967,13 @@
             // Code
             text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
             
+            // Tables (simple support)
+            text = text.replace(/\|(.+)\|/g, (match, content) => {
+                const cells = content.split('|').map(cell => `<td>${cell.trim()}</td>`).join('');
+                return `<tr>${cells}</tr>`;
+            });
+            text = text.replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>');
+            
             // Paragraphs
             text = text.split('\n\n').map(para => {
                 if (!para.startsWith('<')) {
@@ -465,49 +985,76 @@
             return text;
         }
 
-        // Node selection
+        // Node interactions
         function selectNode(node, e) {
             e.stopPropagation();
             
-            // Deselect previous
             if (selectedNode) {
                 selectedNode.classList.remove('selected');
             }
             
-            // Select new
             selectedNode = node;
             node.classList.add('selected');
         }
 
-        // Toggle node expansion
-        function toggleNode(node, e) {
-            e.stopPropagation();
-            node.classList.toggle('expanded');
-            
-            // Update item data
+        function toggleNode(node) {
             const item = workflow.items[node.id];
-            if (item) {
-                item.data.isExpanded = node.classList.contains('expanded');
-            }
+            if (!item) return;
             
-            // Adjust node height
-            if (node.classList.contains('expanded')) {
-                const content = node.querySelector('.node-content');
-                const header = node.querySelector('.node-header');
-                const contentHeight = content.scrollHeight;
-                const totalHeight = header.offsetHeight + contentHeight + 32; // padding
-                node.style.height = Math.min(totalHeight, 500) + 'px';
-            } else {
-                const item = workflow.items[node.id];
-                node.style.height = item.height + 'px';
+            node.classList.toggle('expanded');
+            item.data.isExpanded = node.classList.contains('expanded');
+            
+            // Handle group expansion
+            if (item.type === 'group') {
+                if (item.data.isExpanded) {
+                    renderGroupChildren(item.id);
+                } else {
+                    hideGroupChildren(item.id);
+                }
             }
             
             updateLinks();
         }
 
+        function editTitle(titleEl, item, e) {
+            e.stopPropagation();
+            
+            const oldTitle = titleEl.textContent;
+            titleEl.contentEditable = true;
+            titleEl.focus();
+            
+            // Select all text
+            const range = document.createRange();
+            range.selectNodeContents(titleEl);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            const save = () => {
+                titleEl.contentEditable = false;
+                const newTitle = titleEl.textContent.trim();
+                if (newTitle) {
+                    item.data.title = newTitle;
+                } else {
+                    titleEl.textContent = oldTitle;
+                }
+            };
+            
+            titleEl.addEventListener('blur', save, { once: true });
+            titleEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    save();
+                } else if (e.key === 'Escape') {
+                    titleEl.textContent = oldTitle;
+                    save();
+                }
+            });
+        }
+
         // Dragging
         function startDrag(node, e) {
-            if (e.target.classList.contains('node-expand-icon')) return;
+            if (e.target.classList.contains('node-control')) return;
             
             isDragging = true;
             const rect = node.getBoundingClientRect();
@@ -518,6 +1065,7 @@
                 y: e.clientY - rect.top + canvasRect.top + canvas.scrollTop
             };
             
+            node.classList.add('dragging');
             selectNode(node, e);
             
             document.addEventListener('mousemove', handleDrag);
@@ -535,7 +1083,6 @@
             selectedNode.style.left = Math.max(0, x) + 'px';
             selectedNode.style.top = Math.max(0, y) + 'px';
             
-            // Update item position
             const item = workflow.items[selectedNode.id];
             if (item) {
                 item.x = Math.max(0, x);
@@ -543,21 +1090,213 @@
             }
             
             updateLinks();
-            updateViewportSize();
         }
 
         function stopDrag() {
             isDragging = false;
+            if (selectedNode) {
+                selectedNode.classList.remove('dragging');
+            }
             document.removeEventListener('mousemove', handleDrag);
             document.removeEventListener('mouseup', stopDrag);
         }
 
-        // Update links
-        function updateLinks() {
-            // Clear existing links
-            linksSvg.querySelectorAll('.link').forEach(link => link.remove());
+        // Resizing
+        function startResize(node, e) {
+            isResizing = true;
+            selectedNode = node;
             
-            // Draw new links
+            document.addEventListener('mousemove', handleResize);
+            document.addEventListener('mouseup', stopResize);
+            e.preventDefault();
+        }
+
+        function handleResize(e) {
+            if (!isResizing || !selectedNode) return;
+            
+            const rect = selectedNode.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            const width = Math.max(200, e.clientX - rect.left);
+            const height = Math.max(100, e.clientY - rect.top);
+            
+            selectedNode.style.width = width + 'px';
+            selectedNode.style.height = height + 'px';
+            
+            const item = workflow.items[selectedNode.id];
+            if (item) {
+                item.width = width;
+                item.height = height;
+            }
+            
+            updateLinks();
+        }
+
+        function stopResize() {
+            isResizing = false;
+            document.removeEventListener('mousemove', handleResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+
+        // Context menu
+        function handleContextMenu(e) {
+            e.preventDefault();
+            
+            if (e.target === canvas || e.target === viewport) {
+                const canvasRect = canvas.getBoundingClientRect();
+                contextMenuPos = {
+                    x: e.clientX - canvasRect.left + canvas.scrollLeft,
+                    y: e.clientY - canvasRect.top + canvas.scrollTop
+                };
+                
+                contextMenu.style.left = e.clientX + 'px';
+                contextMenu.style.top = e.clientY + 'px';
+                contextMenu.style.display = 'block';
+            }
+        }
+
+        function handleCanvasClick(e) {
+            if (contextMenu.style.display === 'block') {
+                contextMenu.style.display = 'none';
+            }
+            
+            if (e.target === canvas || e.target === viewport) {
+                if (selectedNode) {
+                    selectedNode.classList.remove('selected');
+                    selectedNode = null;
+                }
+            }
+        }
+
+        function handleMenuClick(e) {
+            const menuItem = e.target.closest('.menu-item');
+            if (!menuItem) return;
+            
+            const action = menuItem.dataset.action;
+            contextMenu.style.display = 'none';
+            
+            let type = null;
+            switch (action) {
+                case 'add-scribble': type = 'scribble'; break;
+                case 'add-task': type = 'task'; break;
+                case 'add-group': type = 'group'; break;
+                case 'add-estimator': type = 'estimator'; break;
+                case 'add-knowledge-section': type = 'knowledge-section'; break;
+                case 'add-knowledge-subsection': type = 'knowledge-subsection'; break;
+                case 'add-knowledge-item': type = 'knowledge-item'; break;
+                case 'add-adr': type = 'adr'; break;
+            }
+            
+            if (type) {
+                addNode(type, contextMenuPos.x, contextMenuPos.y);
+            }
+        }
+
+        // Add new node
+        function addNode(type, x, y) {
+            const id = `item-${workflow.nextItemId++}`;
+            const defaultData = {
+                title: type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' '),
+                content: '',
+                isExpanded: false
+            };
+            
+            // Type-specific defaults
+            if (type === 'task') {
+                Object.assign(defaultData, {
+                    description: '',
+                    complexity: 3,
+                    risk: 0.1,
+                    priority: 3,
+                    duration: 1
+                });
+            } else if (type === 'estimator') {
+                Object.assign(defaultData, {
+                    teamMembers: 5,
+                    workingHours: 8,
+                    overhead: 0.15,
+                    productivity: 0.85,
+                    learningCurve: 1.0,
+                    hoursPerStoryPoint: 4
+                });
+            } else if (type === 'adr') {
+                Object.assign(defaultData, {
+                    code: '',
+                    category: '',
+                    topic: ''
+                });
+            }
+            
+            const item = {
+                id: id,
+                type: type,
+                x: x,
+                y: y,
+                width: 300,
+                height: 200,
+                data: defaultData
+            };
+            
+            workflow.items[id] = item;
+            createNode(item);
+            updateLinks();
+        }
+
+        // Delete node
+        function deleteNode(nodeId) {
+            const node = document.getElementById(nodeId);
+            if (node) node.remove();
+            
+            delete workflow.items[nodeId];
+            
+            // Remove from groups
+            Object.keys(groups).forEach(groupId => {
+                groups[groupId] = groups[groupId].filter(id => id !== nodeId);
+            });
+            
+            // Remove related links
+            workflow.links = workflow.links.filter(link => 
+                link.sourceId !== nodeId && link.targetId !== nodeId
+            );
+            
+            updateLinks();
+        }
+
+        // Groups
+        function renderGroupChildren(groupId) {
+            const groupNode = document.getElementById(groupId);
+            if (!groupNode) return;
+            
+            const groupContent = groupNode.querySelector('.group-content');
+            const childIds = groups[groupId] || [];
+            
+            childIds.forEach(childId => {
+                const childItem = workflow.items[childId];
+                if (childItem) {
+                    // Move child into group
+                    const childNode = document.getElementById(childId);
+                    if (childNode) {
+                        groupContent.appendChild(childNode);
+                    }
+                }
+            });
+        }
+
+        function hideGroupChildren(groupId) {
+            const childIds = groups[groupId] || [];
+            
+            childIds.forEach(childId => {
+                const childNode = document.getElementById(childId);
+                if (childNode) {
+                    viewport.appendChild(childNode);
+                }
+            });
+        }
+
+        // Links
+        function updateLinks() {
+            linksSvg.innerHTML = '<defs><marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><polygon points="0 0, 10 3, 0 6" class="link-arrow"/></marker></defs>';
+            
             workflow.links.forEach(link => {
                 const source = document.getElementById(link.sourceId);
                 const target = document.getElementById(link.targetId);
@@ -568,13 +1307,11 @@
                 const targetRect = target.getBoundingClientRect();
                 const canvasRect = canvas.getBoundingClientRect();
                 
-                // Calculate connection points
                 const sx = sourceRect.left - canvasRect.left + canvas.scrollLeft + sourceRect.width / 2;
                 const sy = sourceRect.bottom - canvasRect.top + canvas.scrollTop;
                 const tx = targetRect.left - canvasRect.left + canvas.scrollLeft + targetRect.width / 2;
                 const ty = targetRect.top - canvasRect.top + canvas.scrollTop;
                 
-                // Create path
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.classList.add('link');
                 path.setAttribute('d', `M ${sx} ${sy} L ${tx} ${ty}`);
@@ -583,27 +1320,192 @@
                 linksSvg.appendChild(path);
             });
             
-            updateSvgSize();
+            // Update SVG size
+            linksSvg.setAttribute('width', viewport.offsetWidth);
+            linksSvg.setAttribute('height', viewport.offsetHeight);
         }
 
-        // Update viewport and SVG sizes
-        function updateViewportSize() {
-            let maxX = 0, maxY = 0;
+        // Input listeners
+        function setupInputListeners(node, item) {
+            const inputs = node.querySelectorAll('input, select, textarea');
             
-            Object.values(workflow.items).forEach(item => {
-                maxX = Math.max(maxX, item.x + item.width + 50);
-                maxY = Math.max(maxY, item.y + item.height + 50);
+            inputs.forEach(input => {
+                input.addEventListener('change', () => {
+                    updateItemData(item);
+                    
+                    // If it's an estimator, recalculate
+                    if (item.type === 'estimator') {
+                        calculateEstimates();
+                    }
+                });
+                
+                // Prevent drag when interacting with inputs
+                input.addEventListener('mousedown', e => e.stopPropagation());
+            });
+        }
+
+        function updateItemData(item) {
+            const node = document.getElementById(item.id);
+            if (!node) return;
+            
+            switch (item.type) {
+                case 'task':
+                    item.data.complexity = node.querySelector('.complexity')?.value;
+                    item.data.risk = node.querySelector('.risk')?.value;
+                    item.data.priority = node.querySelector('.priority')?.value;
+                    item.data.duration = node.querySelector('.duration')?.value;
+                    break;
+                    
+                case 'estimator':
+                    item.data.teamMembers = node.querySelector('.team-members')?.value;
+                    item.data.workingHours = node.querySelector('.working-hours')?.value;
+                    item.data.overhead = node.querySelector('.overhead')?.value;
+                    item.data.productivity = node.querySelector('.productivity')?.value;
+                    item.data.learningCurve = node.querySelector('.learning-curve')?.value;
+                    item.data.hoursPerStoryPoint = node.querySelector('.hours-per-sp')?.value;
+                    break;
+                    
+                case 'data':
+                    const textarea = node.querySelector('.data-text');
+                    if (textarea) {
+                        item.data.content = textarea.value;
+                    }
+                    break;
+                    
+                case 'knowledge-section':
+                case 'knowledge-subsection':
+                case 'knowledge-item':
+                    item.data.content = node.querySelector('.knowledge-content')?.value;
+                    break;
+                    
+                case 'adr':
+                    item.data.code = node.querySelector('.adr-code')?.value;
+                    item.data.category = node.querySelector('.adr-category')?.value;
+                    item.data.topic = node.querySelector('.adr-topic')?.value;
+                    break;
+            }
+        }
+
+        // Estimator calculations
+        function calculateEstimates() {
+            const estimator = Object.values(workflow.items).find(item => item.type === 'estimator');
+            if (!estimator) return;
+            
+            const estimatorNode = document.getElementById(estimator.id);
+            if (!estimatorNode) return;
+            
+            let totalBaseSP = 0;
+            let totalAdjustedSP = 0;
+            
+            // Calculate from all tasks
+            Object.values(workflow.items).filter(item => item.type === 'task').forEach(task => {
+                const complexity = parseFloat(task.data.complexity) || 0;
+                const risk = parseFloat(task.data.risk) || 0;
+                const duration = parseFloat(task.data.duration) || 0;
+                
+                totalBaseSP += complexity;
+                
+                const riskAdjustment = risk;
+                const durationUncertainty = 0.1 * Math.log(1 + Math.max(0, duration));
+                const Fi = (1 + riskAdjustment) * (1 + durationUncertainty);
+                const adjustedSP = complexity * Fi;
+                
+                const baseTestFactor = 0.15;
+                const riskTestFactor = 0.20;
+                const testingEffort = adjustedSP * (baseTestFactor + riskTestFactor * risk);
+                
+                totalAdjustedSP += adjustedSP + testingEffort;
             });
             
-            viewport.style.width = maxX + 'px';
-            viewport.style.height = maxY + 'px';
+            // Calculate velocity
+            const R = parseInt(estimator.data.teamMembers) || 0;
+            const D = parseFloat(estimator.data.workingHours) || 0;
+            const O = parseFloat(estimator.data.overhead) || 0;
+            const P = parseFloat(estimator.data.productivity) || 0;
+            const L = parseFloat(estimator.data.learningCurve) || 0;
+            const H = parseFloat(estimator.data.hoursPerStoryPoint) || 0;
             
-            updateSvgSize();
+            const efficiencyFactor = (O >= 0 && O < 1) ? 1 - O : 0;
+            const effectiveHoursPerDay = R * D * efficiencyFactor * P * L;
+            
+            let teamVelocity = 0;
+            let duration = 'N/A';
+            
+            if (H > 0 && effectiveHoursPerDay > 0) {
+                teamVelocity = effectiveHoursPerDay / H;
+                
+                if (totalAdjustedSP > 0 && teamVelocity > 0) {
+                    duration = (totalAdjustedSP / teamVelocity).toFixed(1);
+                }
+            }
+            
+            // Update display
+            estimatorNode.querySelector('.base-sp').textContent = totalBaseSP.toFixed(2);
+            estimatorNode.querySelector('.adj-sp').textContent = totalAdjustedSP.toFixed(2);
+            estimatorNode.querySelector('.velocity').textContent = teamVelocity.toFixed(2);
+            estimatorNode.querySelector('.duration').textContent = duration;
         }
 
-        function updateSvgSize() {
-            linksSvg.setAttribute('width', viewport.style.width);
-            linksSvg.setAttribute('height', viewport.style.height);
+        // Paste handling
+        function handlePaste(e) {
+            const activeElement = document.activeElement;
+            if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') return;
+            
+            const items = e.clipboardData.items;
+            
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    e.preventDefault();
+                    const blob = item.getAsFile();
+                    const reader = new FileReader();
+                    
+                    reader.onload = (event) => {
+                        const id = `item-${workflow.nextItemId++}`;
+                        const pasteItem = {
+                            id: id,
+                            type: 'data',
+                            x: contextMenuPos.x || 100,
+                            y: contextMenuPos.y || 100,
+                            width: 300,
+                            height: 200,
+                            data: {
+                                title: 'Pasted Image',
+                                dataType: 'image',
+                                content: event.target.result
+                            }
+                        };
+                        
+                        workflow.items[id] = pasteItem;
+                        createNode(pasteItem);
+                    };
+                    
+                    reader.readAsDataURL(blob);
+                    return;
+                }
+                
+                if (item.type === 'text/plain') {
+                    e.preventDefault();
+                    item.getAsString((text) => {
+                        const id = `item-${workflow.nextItemId++}`;
+                        const pasteItem = {
+                            id: id,
+                            type: 'data',
+                            x: contextMenuPos.x || 100,
+                            y: contextMenuPos.y || 100,
+                            width: 300,
+                            height: 200,
+                            data: {
+                                title: 'Pasted Text',
+                                dataType: 'text',
+                                content: text
+                            }
+                        };
+                        
+                        workflow.items[id] = pasteItem;
+                        createNode(pasteItem);
+                    });
+                }
+            }
         }
 
         // View controls
@@ -620,9 +1522,6 @@
             });
             
             const padding = 50;
-            const contentWidth = maxX - minX + padding * 2;
-            const contentHeight = maxY - minY + padding * 2;
-            
             canvas.scrollLeft = Math.max(0, minX - padding);
             canvas.scrollTop = Math.max(0, minY - padding);
         }
@@ -632,15 +1531,18 @@
             canvas.scrollTop = 0;
         }
 
-        // Canvas click to deselect
-        canvas.addEventListener('click', (e) => {
-            if (e.target === canvas || e.target === viewport) {
-                if (selectedNode) {
-                    selectedNode.classList.remove('selected');
-                    selectedNode = null;
-                }
-            }
-        });
+        // Utility functions
+        function hasExpandableContent(item) {
+            return item.data.content || 
+                   item.type === 'group' || 
+                   item.type === 'task' ||
+                   item.type === 'estimator' ||
+                   item.type === 'adr' ||
+                   item.type.startsWith('knowledge-');
+        }
+
+        // Initialize with empty workflow
+        renderWorkflow();
     </script>
 </body>
 </html>
