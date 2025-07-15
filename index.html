@@ -242,10 +242,9 @@
         .node-content {
             padding: 12px;
             flex-grow: 1;
-            overflow-y: auto;
+            overflow: auto;
             user-select: text;
             display: none;
-            /* NEW: Flex properties for full-height textareas */
             display: flex;
             flex-direction: column;
         }
@@ -370,11 +369,11 @@
             -webkit-box-orient: vertical;
             line-height: 1.3;
         }
-
+        
         /* Content Styles */
         .scribble-content, .data-text, .knowledge-content, .adr-content textarea {
-            /* NEW: Make textareas fill their container */
             height: 100%;
+            flex-grow: 1; /* Allow it to fill space */
             resize: none;
             width: 100%;
             border: 1px solid #dadce0;
@@ -384,7 +383,9 @@
             font-size: 13px;
             line-height: 1.5;
         }
-        .scribble-content { background: transparent; border: none; outline: none; }
+        .scribble-content { background: transparent; border: none; outline: none; padding: 4px; }
+        .data-text, .knowledge-content, .adr-content textarea { margin-top: 8px; }
+
         .task-content label { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; }
         .task-content label span { width: 120px; color: #5f6368; font-weight: 500; }
         .task-content input, .task-content select { flex: 1; padding: 4px 8px; border: 1px solid #dadce0; border-radius: 4px; font-size: 13px; }
@@ -498,19 +499,20 @@
         }
 
         #modal-content {
-            display: flex; /* Keeps it minimal size */
+            display: flex;
             max-width: 90vw;
             max-height: 90vh;
         }
 
-        /* Style the node specifically when it's inside the modal */
         #modal-content > .node {
-            position: relative; /* Override absolute positioning from canvas */
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3); /* Stronger shadow */
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             max-width: 90vw;
             max-height: 90vh;
             min-width: 400px;
             min-height: 300px;
+            width: 60vw;
+            height: 70vh;
         }
 
         /* Scrollbars */
@@ -628,7 +630,7 @@
 
         const nodeIcons = { 'scribble': '📝', 'task': '✓', 'group': '📁', 'estimator': '📊', 'data': '📋', 'knowledge-section': '📚', 'knowledge-subsection': '📖', 'knowledge-item': '📄', 'adr': '🏛️' };
 
-        // --- Initialization and Event Handlers (omitted for brevity, they are complete and correct) ---
+        // --- Initialization and Event Handlers ---
         function initialize() {
             saveBtn.addEventListener('click', saveWorkflow);
             loadBtn.addEventListener('click', () => fileInput.click());
@@ -657,6 +659,7 @@
                 updateViewportTransform();
             }
         }
+        
         function handleMouseDown(e) { const clickedNode = e.target.closest('.node'); const clickedLink = e.target.closest('.link-clickable'); if (!clickedNode && !clickedLink && (e.ctrlKey || e.metaKey)) { startSelection(e); return; } if ((e.button === 0 && !clickedNode && !clickedLink) || e.button === 1) { panStart = { x: e.clientX, y: e.clientY }; panStartTime = Date.now(); e.preventDefault(); } }
         function handleMouseMove(e) { if (isSelecting) { handleSelection(e); return; } if (panStart.x !== 0 || panStart.y !== 0) { const dx = e.clientX - panStart.x; const dy = e.clientY - panStart.y; if (!isPanning && Math.sqrt(dx * dx + dy * dy) > panThreshold) { isPanning = true; canvas.classList.add('panning'); } if (isPanning) { canvas.scrollLeft -= dx; canvas.scrollTop -= dy; panStart = { x: e.clientX, y: e.clientY }; } } }
         function handleMouseUp(e) { if (isSelecting) endSelection(); if (isPanning) { isPanning = false; canvas.classList.remove('panning'); autoSave(); } if ((panStart.x !== 0 || panStart.y !== 0) && !isPanning && Date.now() - panStartTime < 200) { handleCanvasClick(e); } panStart = { x: 0, y: 0 }; }
@@ -756,7 +759,34 @@
             return node;
         }
 
-        // --- Link Routing Engine (Unchanged, complete) ---
+        function addNode(type, x, y) {
+            const id = `item-${workflow.nextItemId++}`;
+            const isGroup = type === 'group';
+            const defaultData = { title: type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' '), content: '', isExpanded: true };
+            if (isGroup) { Object.assign(defaultData, { children: [], isExpanded: true }); groups[id] = []; }
+            const item = { id, type, x, y, width: 400, height: 300, data: defaultData, parentId: contextMenuPos.groupId || null };
+            workflow.items[id] = item;
+            if (contextMenuPos.groupId) { addNodeToGroup(item, contextMenuPos.groupId); }
+            else { createNode(item); }
+            updateLinks(); autoSave();
+        }
+
+        function deleteNode(nodeId) {
+            const node = document.getElementById(nodeId);
+            if (node) node.remove();
+            const item = workflow.items[nodeId];
+            if (item && item.type === 'group') { (groups[nodeId] || item.data.children || []).forEach(childId => deleteNode(childId)); }
+            if (item && item.parentId) {
+                const parentItem = workflow.items[item.parentId];
+                if (parentItem && parentItem.data.children) { parentItem.data.children = parentItem.data.children.filter(id => id !== nodeId); }
+                if (groups[item.parentId]) { groups[item.parentId] = groups[item.parentId].filter(id => id !== nodeId); }
+            }
+            delete workflow.items[nodeId];
+            workflow.links = workflow.links.filter(link => link.sourceId !== nodeId && link.targetId !== nodeId);
+            updateLinks(); autoSave();
+        }
+
+        // --- Link Routing Engine ---
         function getItemBoundingBox(item, withMargin = false) { const node = document.getElementById(item.id); const isCollapsedGroup = item.type === 'group' && node && !node.classList.contains('expanded'); const width = isCollapsedGroup ? GROUP_COLLAPSED_WIDTH : item.width; const height = isCollapsedGroup ? GROUP_COLLAPSED_HEIGHT : item.height; const margin = withMargin ? ROUTING_MARGIN : 0; return { x: item.x - margin, y: item.y - margin, width: width + 2*margin, height: height + 2*margin, right: item.x + width + margin, bottom: item.y + height + margin }; }
         function snapPathToEdges(sourceBox, targetBox, points) { if (points.length < 2) return points; const newPoints = JSON.parse(JSON.stringify(points)); const start = newPoints[0]; const end = newPoints[newPoints.length - 1]; const nextPoint = newPoints[1]; const prevPoint = newPoints[newPoints.length - 2]; if (nextPoint.x > start.x) start.x = sourceBox.right; else if (nextPoint.x < start.x) start.x = sourceBox.x; else if (nextPoint.y > start.y) start.y = sourceBox.bottom; else start.y = sourceBox.y; if (prevPoint.x > end.x) end.x = targetBox.right; else if (prevPoint.x < end.x) end.x = targetBox.x; else if (prevPoint.y > end.y) end.y = targetBox.bottom; else end.y = targetBox.y; return newPoints; }
         function lineIntersectsRect(p1, p2, rect) { const cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2; const w = Math.abs(p1.x - p2.x), h = Math.abs(p1.y - p2.y); const rcx = rect.x + rect.width/2, rcy = rect.y + rect.height/2; return Math.abs(cx - rcx) <= (w + rect.width)/2 && Math.abs(cy - rcy) <= (h + rect.height)/2; }
@@ -766,14 +796,16 @@
         
         // --- Drag, Resize, Linking ---
         function startDrag(node, e) { if (e.target.classList.contains('node-control') || e.target.classList.contains('resize-handle')) return; if (e.altKey) { startLinking(node, e); return; } isDragging = true; const nodeRect = node.getBoundingClientRect(); dragOffset = { x: e.clientX - nodeRect.left, y: e.clientY - nodeRect.top }; node.classList.add('dragging'); selectNode(node, e); document.addEventListener('mousemove', handleDrag); document.addEventListener('mouseup', stopDrag); e.preventDefault(); }
-        function handleDrag(e) { if (!isDragging || !selectedNode) return; const canvasRect = canvas.getBoundingClientRect(); const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x; const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y; selectedNode.style.left = Math.max(0, x) + 'px'; selectedNode.style.top = Math.max(0, y) + 'px'; const item = workflow.items[selectedNode.id]; if (item) { item.x = Math.max(0, x); item.y = Math.max(0, y); } updateLinks(); }
+        function handleDrag(e) { e.stopPropagation(); if (!isDragging || !selectedNode) return; const canvasRect = canvas.getBoundingClientRect(); const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x; const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y; selectedNode.style.left = Math.max(0, x) + 'px'; selectedNode.style.top = Math.max(0, y) + 'px'; const item = workflow.items[selectedNode.id]; if (item) { item.x = Math.max(0, x); item.y = Math.max(0, y); } updateLinks(); }
         function stopDrag() { if (!isDragging) return; isDragging = false; if (selectedNode) selectedNode.classList.remove('dragging'); autoSave(); document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', stopDrag); }
         function startResize(node, e) { isResizing = true; selectNode(node, e); document.addEventListener('mousemove', handleResize); document.addEventListener('mouseup', stopResize); e.preventDefault(); e.stopPropagation(); }
-        function handleResize(e) { if (!isResizing || !selectedNode) return; const isModalNode = selectedNode.id.startsWith('modal-'); const nodeRect = selectedNode.getBoundingClientRect(); let width, height; if(isModalNode) { width = Math.max(200, nodeRect.width + e.movementX); height = Math.max(100, nodeRect.height + e.movementY); } else { width = Math.max(200, (e.clientX - nodeRect.left) / scale); height = Math.max(100, (e.clientY - nodeRect.top) / scale); } selectedNode.style.width = width + 'px'; selectedNode.style.height = height + 'px'; const itemId = isModalNode ? selectedNode.id.substring(6) : selectedNode.id; const item = workflow.items[itemId]; if (item) { item.width = width; item.height = height; if (item.type === 'group') { item.data.expandedWidth = width; item.data.expandedHeight = height; } } if(!isModalNode) updateLinks(); }
+        function handleResize(e) { e.stopPropagation(); if (!isResizing || !selectedNode) return; const isModalNode = selectedNode.id.startsWith('modal-'); const nodeRect = selectedNode.getBoundingClientRect(); let width, height; if(isModalNode) { width = Math.max(200, nodeRect.width + e.movementX); height = Math.max(100, nodeRect.height + e.movementY); } else { width = Math.max(200, (e.clientX - nodeRect.left) / scale); height = Math.max(100, (e.clientY - nodeRect.top) / scale); } selectedNode.style.width = width + 'px'; selectedNode.style.height = height + 'px'; const itemId = isModalNode ? selectedNode.id.substring(6) : selectedNode.id; const item = workflow.items[itemId]; if (item) { item.width = width; item.height = height; if (item.type === 'group') { item.data.expandedWidth = width; item.data.expandedHeight = height; } } if(!isModalNode) updateLinks(); }
         function stopResize() { if (!isResizing) return; isResizing = false; autoSave(); document.removeEventListener('mousemove', handleResize); document.removeEventListener('mouseup', stopResize); }
         function startLinking(node, e) { isLinking = true; linkSource = node; canvas.classList.add('linking'); tempLinkLine = document.createElementNS('http://www.w3.org/2000/svg', 'path'); tempLinkLine.classList.add('link'); tempLinkLine.style.strokeDasharray = '5,5'; tempLinkLine.style.color = '#1a73e8'; linksSvg.appendChild(tempLinkLine); node.classList.add('link-source'); document.addEventListener('mousemove', handleLinking); document.addEventListener('mouseup', stopLinking); e.preventDefault(); }
         function handleLinking(e) { if (!isLinking || !linkSource || !tempLinkLine) return; const sourceItem = workflow.items[linkSource.id]; if (!sourceItem) return; const canvasRect = canvas.getBoundingClientRect(); const mouseX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale; const mouseY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale; const sourceBox = getItemBoundingBox(sourceItem); const startPoint = { x: sourceBox.x + sourceBox.width / 2, y: sourceBox.y + sourceBox.height / 2}; tempLinkLine.setAttribute('d', `M ${startPoint.x} ${startPoint.y} L ${mouseX} ${mouseY}`); const targetNode = e.target.closest('.node'); document.querySelectorAll('.node.link-target').forEach(n => n.classList.remove('link-target')); if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) { targetNode.classList.add('link-target'); } }
         function stopLinking(e) { if (!isLinking) return; isLinking = false; canvas.classList.remove('linking'); if (tempLinkLine) tempLinkLine.remove(); const targetNode = e.target.closest('.node'); if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) { const sourceId = linkSource.id; const targetId = targetNode.id; if (!workflow.links.find(l => l.sourceId === sourceId && l.targetId === targetId)) { workflow.links.push({ id: `link-${workflow.nextLinkId++}`, sourceId, targetId }); updateLinks(); autoSave(); } } document.querySelectorAll('.link-source, .link-target').forEach(n => n.classList.remove('link-source', 'link-target')); linkSource = null; document.removeEventListener('mousemove', handleLinking); document.removeEventListener('mouseup', stopLinking); }
+        
+        // --- Selection and UI State Management ---
         function startSelection(e) { isSelecting = true; selectStart = { x: e.clientX - canvas.getBoundingClientRect().left + canvas.scrollLeft, y: e.clientY - canvas.getBoundingClientRect().top + canvas.scrollTop }; selectionRect.style.left = selectStart.x + 'px'; selectionRect.style.top = selectStart.y + 'px'; selectionRect.style.width = '0px'; selectionRect.style.height = '0px'; selectionRect.style.display = 'block'; e.preventDefault(); }
         function handleSelection(e) { if (!isSelecting) return; const currentX = e.clientX - canvas.getBoundingClientRect().left + canvas.scrollLeft; const currentY = e.clientY - canvas.getBoundingClientRect().top + canvas.scrollTop; const x = Math.min(selectStart.x, currentX); const y = Math.min(selectStart.y, currentY); const width = Math.abs(currentX - selectStart.x); const height = Math.abs(currentY - selectStart.y); selectionRect.style.left = x + 'px'; selectionRect.style.top = y + 'px'; selectionRect.style.width = width + 'px'; selectionRect.style.height = height + 'px'; const rectX = (x - translateX) / scale; const rectY = (y - translateY) / scale; const rectWidth = width / scale; const rectHeight = height / scale; clearSelection(); Object.values(workflow.items).forEach(item => { if (!item.parentId) { const node = document.getElementById(item.id); if (node) { const itemRight = item.x + item.width; const itemBottom = item.y + item.height; if (item.x < rectX + rectWidth && itemRight > rectX && item.y < rectY + rectHeight && itemBottom > rectY) { node.classList.add('selected'); selectedNodes.push(node); } } } }); }
         function endSelection() { isSelecting = false; selectionRect.style.display = 'none'; }
@@ -786,6 +818,8 @@
         function clearSelection() { if (selectedNode) { selectedNode.classList.remove('selected'); } selectedNodes.forEach(n => n.classList.remove('selected')); selectedNode = null; selectedNodes = []; }
         function selectNode(node, e) { if (e) e.stopPropagation(); if (node.id.startsWith('modal-')) return; clearSelection(); selectedNode = node; node.classList.add('selected'); }
         function toggleNode(node) { const item = workflow.items[node.id]; if (!item) return; const isCurrentlyExpanded = node.classList.contains('expanded'); item.data.isExpanded = !isCurrentlyExpanded; node.classList.toggle('expanded'); if (item.type === 'group') { if (item.data.isExpanded) { const expandedWidth = item.data.expandedWidth || item.width; const expandedHeight = item.data.expandedHeight || item.height; node.style.width = expandedWidth + 'px'; node.style.height = expandedHeight + 'px'; item.width = expandedWidth; item.height = expandedHeight; } else { if (!item.data.expandedWidth || !item.data.expandedHeight) { item.data.expandedWidth = item.width; item.data.expandedHeight = item.height; } node.style.width = GROUP_COLLAPSED_WIDTH + 'px'; node.style.height = GROUP_COLLAPSED_HEIGHT + 'px'; } } updateLinks(); autoSave(); }
+        
+        // --- Utility and Helper Functions ---
         function saveToLocalStorage() { try { const state = { workflow, groups, scale, translateX, translateY, scrollLeft: canvas.scrollLeft, scrollTop: canvas.scrollTop }; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { console.error('Error saving to localStorage:', error); } }
         function loadFromLocalStorage() { try { const savedState = localStorage.getItem(STORAGE_KEY); if (!savedState) return false; const state = JSON.parse(savedState); workflow = state.workflow || { items: {}, links: [], nextItemId: 1, nextLinkId: 1 }; groups = state.groups || {}; scale = state.scale || 1; translateX = state.translateX || 0; translateY = state.translateY || 0; renderWorkflow(); updateViewportTransform(); setTimeout(() => { if (state.scrollLeft) canvas.scrollLeft = state.scrollLeft; if (state.scrollTop) canvas.scrollTop = state.scrollTop; }, 50); return true; } catch (error) { console.error('Error loading from localStorage:', error); return false; } }
         let saveTimeout; function autoSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToLocalStorage, 100); }
@@ -812,7 +846,7 @@
         function handleDrop(e) { e.preventDefault(); const files = e.dataTransfer.files; const canvasRect = canvas.getBoundingClientRect(); const dropX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale; const dropY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale; Array.from(files).forEach((file, index) => { if (file.type.startsWith('image/')) { const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const item = { id, type: 'data', x: dropX + (index * 20), y: dropY + (index * 20), width: 300, height: 200, data: { title: file.name, dataType: 'image', content: event.target.result }, parentId: null }; workflow.items[id] = item; createNode(item); autoSave(); }; reader.readAsDataURL(file); } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) { const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const item = { id, type: 'scribble', x: dropX + (index * 20), y: dropY + (index * 20), width: 400, height: 300, data: { title: file.name, content: event.target.result, isExpanded: true }, parentId: null }; workflow.items[id] = item; createNode(item); autoSave(); }; reader.readAsText(file); } }); }
         function fitToScreen() { if (Object.keys(workflow.items).length === 0) return; let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0; let hasVisibleNodes = false; Object.values(workflow.items).forEach(item => { if (!item.parentId) { hasVisibleNodes = true; minX = Math.min(minX, item.x); minY = Math.min(minY, item.y); maxX = Math.max(maxX, item.x + item.width); maxY = Math.max(maxY, item.y + item.height); } }); if (!hasVisibleNodes) { resetView(); return; }; const padding = 50; const contentWidth = maxX - minX; const contentHeight = maxY - minY; const canvasWidth = canvas.clientWidth; const canvasHeight = canvas.clientHeight; const scaleX = canvasWidth / (contentWidth + padding * 2); const scaleY = canvasHeight / (contentHeight + padding * 2); scale = Math.min(scaleX, scaleY, 1); translateX = -minX * scale + (canvasWidth - contentWidth * scale) / 2; translateY = -minY * scale + (canvasHeight - contentHeight * scale) / 2; updateViewportTransform(); }
         function resetView() { scale = 1; translateX = 0; translateY = 0; updateViewportTransform(); fitToScreen(); }
-        function hasExpandableContent(item) { return item.type === 'scribble' || item.type === 'group' || item.type === 'task' || item.type === 'estimator' || item.type === 'adr' || item.type.startsWith('knowledge-') || item.type === 'data'; }
+        function hasExpandableContent(item) { return item.type !== 'group' && (item.type === 'scribble' || item.type === 'task' || item.type === 'estimator' || item.type === 'adr' || item.type.startsWith('knowledge-') || item.type === 'data'); }
 
         // Start the application
         initialize();
