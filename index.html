@@ -144,6 +144,12 @@
             z-index: 10;
         }
         
+        .node.multi-selected {
+            outline: 3px dashed #1a73e8;
+            outline-offset: 2px;
+            z-index: 9;
+        }
+        
         .node.link-source {
             border-color: #1a73e8 !important;
             border-width: 3px !important;
@@ -503,7 +509,7 @@
         /* Selection Rectangle */
         #selection-rect {
             position: absolute;
-            border: 1px dashed #1a73e8;
+            border: 2px dashed #1a73e8;
             background: rgba(26, 115, 232, 0.1);
             pointer-events: none;
             z-index: 999;
@@ -612,7 +618,7 @@
     </div>
 
     <script>
-        // Advanced Knowledge Tree Workflow System v1.1.1
+        // Advanced Knowledge Tree Workflow System v1.1.2
         // State management
         let workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
         let selectedNode = null;
@@ -639,6 +645,8 @@
         const GROUP_COLLAPSED_WIDTH = 90;
         const GROUP_COLLAPSED_HEIGHT = 100;
         const ROUTING_MARGIN = 20;
+        const MAX_ZOOM = 3;
+        const MIN_ZOOM = 0.2;
 
         // DOM elements
         const canvas = document.getElementById('canvas');
@@ -701,13 +709,74 @@
             }
         }
         
-        function handleMouseDown(e) { const clickedNode = e.target.closest('.node'); const clickedLink = e.target.closest('.link-clickable'); if (!clickedNode && !clickedLink && (e.ctrlKey || e.metaKey)) { startSelection(e); return; } if ((e.button === 0 && !clickedNode && !clickedLink) || e.button === 1) { panStart = { x: e.clientX, y: e.clientY }; panStartTime = Date.now(); e.preventDefault(); } }
-        function handleMouseMove(e) { if (isSelecting) { handleSelection(e); return; } if (panStart.x !== 0 || panStart.y !== 0) { const dx = e.clientX - panStart.x; const dy = e.clientY - panStart.y; if (!isPanning && Math.sqrt(dx * dx + dy * dy) > panThreshold) { isPanning = true; canvas.classList.add('panning'); } if (isPanning) { canvas.scrollLeft -= dx; canvas.scrollTop -= dy; panStart = { x: e.clientX, y: e.clientY }; } } }
-        function handleMouseUp(e) { if (isSelecting) endSelection(); if (isPanning) { isPanning = false; canvas.classList.remove('panning'); autoSave(); } if ((panStart.x !== 0 || panStart.y !== 0) && !isPanning && Date.now() - panStartTime < 200) { handleCanvasClick(e); } panStart = { x: 0, y: 0 }; }
-        function handleCanvasClick(e) { if (contextMenu.style.display === 'block') { contextMenu.style.display = 'none'; } if (!e.target.closest('.node')) { clearSelection(); } }
+        function handleMouseDown(e) { 
+            const clickedNode = e.target.closest('.node'); 
+            const clickedLink = e.target.closest('.link-clickable'); 
+            
+            // Start selection if ctrl/cmd is held and not clicking on a node or link
+            if (!clickedNode && !clickedLink && (e.ctrlKey || e.metaKey)) { 
+                startSelection(e); 
+                return; 
+            } 
+            
+            // Start panning if clicking on empty canvas or middle mouse button
+            if ((e.button === 0 && !clickedNode && !clickedLink) || e.button === 1) { 
+                panStart = { x: e.clientX, y: e.clientY }; 
+                panStartTime = Date.now(); 
+                e.preventDefault(); 
+            } 
+        }
+        function handleMouseMove(e) { 
+            if (isSelecting) { 
+                handleSelection(e); 
+                return; 
+            } 
+            if ((panStart.x !== 0 || panStart.y !== 0) && !isSelecting) { 
+                const dx = e.clientX - panStart.x; 
+                const dy = e.clientY - panStart.y; 
+                if (!isPanning && Math.sqrt(dx * dx + dy * dy) > panThreshold) { 
+                    isPanning = true; 
+                    canvas.classList.add('panning'); 
+                } 
+                if (isPanning) { 
+                    canvas.scrollLeft -= dx; 
+                    canvas.scrollTop -= dy; 
+                    panStart = { x: e.clientX, y: e.clientY }; 
+                } 
+            } 
+        }
+        function handleMouseUp(e) { 
+            if (isSelecting) { 
+                endSelection(); 
+                return;
+            }
+            if (isPanning) { 
+                isPanning = false; 
+                canvas.classList.remove('panning'); 
+                autoSave(); 
+            } 
+            if ((panStart.x !== 0 || panStart.y !== 0) && !isPanning && Date.now() - panStartTime < 200) { 
+                handleCanvasClick(e); 
+            } 
+            panStart = { x: 0, y: 0 }; 
+        }
+        function handleCanvasClick(e) { 
+            if (contextMenu.style.display === 'block') { 
+                contextMenu.style.display = 'none'; 
+            } 
+            if (!e.target.closest('.node') && !e.target.closest('.link-clickable')) { 
+                clearSelection(); 
+            } 
+        }
         function handleContextMenu(e) { e.preventDefault(); if (isPanning) return; const targetElement = e.target; const groupNode = targetElement.closest('.node.group'); const anyNode = targetElement.closest('.node'); if (!anyNode || groupNode) { const canvasRect = canvas.getBoundingClientRect(); contextMenuPos = { x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale, y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale, groupId: groupNode ? (groupNode.id.startsWith('inline-') ? groupNode.id.substring(7) : groupNode.id) : null }; contextMenu.style.left = e.clientX + 'px'; contextMenu.style.top = e.clientY + 'px'; contextMenu.style.display = 'block'; } }
         function handleWheel(e) { e.preventDefault(); const delta = e.deltaY > 0 ? 0.9 : 1.1; zoom(delta, e.clientX, e.clientY); }
-        function handleKeyboard(e) { const activeElement = document.activeElement; if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.contentEditable === 'true') return; if (e.ctrlKey || e.metaKey) { if (e.key === '+' || e.key === '=') { e.preventDefault(); zoom(1.1); } else if (e.key === '-') { e.preventDefault(); zoom(0.9); } else if (e.key === '0') { e.preventDefault(); resetView(); } else if (e.key === 'Enter') { e.preventDefault(); groupSelectedNodes(); } } if (e.key === 'Delete' && (selectedNode || selectedNodes.length > 0)) { if (confirm('Delete selected node(s)?')) { if (selectedNodes.length > 0) { [...selectedNodes].forEach(node => deleteNode(node.id)); } else if (selectedNode) { deleteNode(selectedNode.id); } clearSelection(); } } }
+        function handleKeyboard(e) { const activeElement = document.activeElement; if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.contentEditable === 'true') return; if (e.ctrlKey || e.metaKey) { if (e.key === '+' || e.key === '=') { e.preventDefault(); zoom(1.1); } else if (e.key === '-') { e.preventDefault(); zoom(0.9); } else if (e.key === '0') { e.preventDefault(); resetView(); } else if (e.key === 'Enter') { e.preventDefault(); groupSelectedNodes(); } }             if (e.key === 'Delete' && (selectedNode || selectedNodes.length > 0)) { 
+                const nodesToDelete = selectedNodes.length > 0 ? selectedNodes : (selectedNode ? [selectedNode] : []);
+                if (nodesToDelete.length > 0 && confirm(`Delete ${nodesToDelete.length} selected node(s)?`)) { 
+                    nodesToDelete.forEach(node => deleteNode(node.id)); 
+                    clearSelection(); 
+                } 
+            } }
 
         // --- Core Node Management ---
         function createNode(item, isModal = false) {
@@ -1119,17 +1188,152 @@
         function stopLinking(e) { if (!isLinking) return; isLinking = false; canvas.classList.remove('linking'); if (tempLinkLine) tempLinkLine.remove(); const targetNode = e.target.closest('.node'); if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) { const sourceId = linkSource.id; const targetId = targetNode.id; if (!workflow.links.find(l => l.sourceId === sourceId && l.targetId === targetId)) { workflow.links.push({ id: `link-${workflow.nextLinkId++}`, sourceId, targetId }); updateLinks(); autoSave(); } } document.querySelectorAll('.link-source, .link-target').forEach(n => n.classList.remove('link-source', 'link-target')); linkSource = null; document.removeEventListener('mousemove', handleLinking); document.removeEventListener('mouseup', stopLinking); }
         
         // --- Selection and UI State Management ---
-        function startSelection(e) { isSelecting = true; selectStart = { x: e.clientX - canvas.getBoundingClientRect().left + canvas.scrollLeft, y: e.clientY - canvas.getBoundingClientRect().top + canvas.scrollTop }; selectionRect.style.left = selectStart.x + 'px'; selectionRect.style.top = selectStart.y + 'px'; selectionRect.style.width = '0px'; selectionRect.style.height = '0px'; selectionRect.style.display = 'block'; e.preventDefault(); }
-        function handleSelection(e) { if (!isSelecting) return; const currentX = e.clientX - canvas.getBoundingClientRect().left + canvas.scrollLeft; const currentY = e.clientY - canvas.getBoundingClientRect().top + canvas.scrollTop; const x = Math.min(selectStart.x, currentX); const y = Math.min(selectStart.y, currentY); const width = Math.abs(currentX - selectStart.x); const height = Math.abs(currentY - selectStart.y); selectionRect.style.left = x + 'px'; selectionRect.style.top = y + 'px'; selectionRect.style.width = width + 'px'; selectionRect.style.height = height + 'px'; const rectX = (x - translateX) / scale; const rectY = (y - translateY) / scale; const rectWidth = width / scale; const rectHeight = height / scale; clearSelection(); Object.values(workflow.items).forEach(item => { if (!item.parentId) { const node = document.getElementById(item.id); if (node) { const itemRight = item.x + item.width; const itemBottom = item.y + item.height; if (item.x < rectX + rectWidth && itemRight > rectX && item.y < rectY + rectHeight && itemBottom > rectY) { node.classList.add('selected'); selectedNodes.push(node); } } } }); }
-        function endSelection() { isSelecting = false; selectionRect.style.display = 'none'; }
-        function groupSelectedNodes() { if (selectedNodes.length < 1) return; let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0; selectedNodes.forEach(node => { const item = workflow.items[node.id]; minX = Math.min(minX, item.x); minY = Math.min(minY, item.y); maxX = Math.max(maxX, item.x + item.width); maxY = Math.max(maxY, item.y + item.height); }); const groupId = `item-${workflow.nextItemId++}`; const groupWidth = (maxX - minX) + 80; const groupHeight = (maxY - minY) + 120; const groupItem = { id: groupId, type: 'group', x: minX - 40, y: minY - 60, width: groupWidth, height: groupHeight, data: { title: 'New Group', isExpanded: true, children: [], expandedWidth: groupWidth, expandedHeight: groupHeight }, parentId: null }; workflow.items[groupId] = groupItem; groups[groupId] = []; selectedNodes.forEach(node => { const item = workflow.items[node.id]; item.parentId = groupId; groups[groupId].push(item.id); node.remove(); }); groupItem.data.children = groups[groupId]; createNode(groupItem); clearSelection(); autoSave(); }
+        function startSelection(e) { 
+            isSelecting = true; 
+            const canvasRect = canvas.getBoundingClientRect();
+            selectStart = { 
+                x: (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale, 
+                y: (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale 
+            }; 
+            const screenX = selectStart.x * scale + translateX - canvas.scrollLeft;
+            const screenY = selectStart.y * scale + translateY - canvas.scrollTop;
+            selectionRect.style.left = screenX + 'px'; 
+            selectionRect.style.top = screenY + 'px'; 
+            selectionRect.style.width = '0px'; 
+            selectionRect.style.height = '0px'; 
+            selectionRect.style.display = 'block'; 
+            e.preventDefault(); 
+        }
+        
+        function handleSelection(e) { 
+            if (!isSelecting) return; 
+            const canvasRect = canvas.getBoundingClientRect();
+            const currentX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale; 
+            const currentY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale; 
+            
+            const x = Math.min(selectStart.x, currentX); 
+            const y = Math.min(selectStart.y, currentY); 
+            const width = Math.abs(currentX - selectStart.x); 
+            const height = Math.abs(currentY - selectStart.y); 
+            
+            // Convert back to screen coordinates for display
+            const screenX = x * scale + translateX - canvas.scrollLeft;
+            const screenY = y * scale + translateY - canvas.scrollTop;
+            const screenWidth = width * scale;
+            const screenHeight = height * scale;
+            
+            selectionRect.style.left = screenX + 'px'; 
+            selectionRect.style.top = screenY + 'px'; 
+            selectionRect.style.width = screenWidth + 'px'; 
+            selectionRect.style.height = screenHeight + 'px'; 
+            
+            clearSelection(); 
+            Object.values(workflow.items).forEach(item => { 
+                if (!item.parentId) { 
+                    const node = document.getElementById(item.id); 
+                    if (node) { 
+                        const itemRight = item.x + item.width; 
+                        const itemBottom = item.y + item.height; 
+                        if (item.x < x + width && itemRight > x && item.y < y + height && itemBottom > y) { 
+                            node.classList.add('multi-selected'); 
+                            selectedNodes.push(node); 
+                        } 
+                    } 
+                } 
+            }); 
+        }
+        function endSelection() { 
+            isSelecting = false; 
+            selectionRect.style.display = 'none'; 
+            selectStart = { x: 0, y: 0 };
+        }
+        function groupSelectedNodes() { 
+            if (selectedNodes.length < 1) return; 
+            let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0; 
+            selectedNodes.forEach(node => { 
+                const item = workflow.items[node.id]; 
+                minX = Math.min(minX, item.x); 
+                minY = Math.min(minY, item.y); 
+                maxX = Math.max(maxX, item.x + item.width); 
+                maxY = Math.max(maxY, item.y + item.height); 
+            }); 
+            const groupId = `item-${workflow.nextItemId++}`; 
+            const groupWidth = (maxX - minX) + 80; 
+            const groupHeight = (maxY - minY) + 120; 
+            const groupItem = { 
+                id: groupId, 
+                type: 'group', 
+                x: minX - 40, 
+                y: minY - 60, 
+                width: groupWidth, 
+                height: groupHeight, 
+                data: { 
+                    title: 'New Group', 
+                    isExpanded: true, 
+                    children: [], 
+                    expandedWidth: groupWidth, 
+                    expandedHeight: groupHeight 
+                }, 
+                parentId: null 
+            }; 
+            workflow.items[groupId] = groupItem; 
+            groups[groupId] = []; 
+            selectedNodes.forEach(node => { 
+                const item = workflow.items[node.id]; 
+                item.parentId = groupId; 
+                groups[groupId].push(item.id); 
+                node.remove(); 
+            }); 
+            groupItem.data.children = groups[groupId]; 
+            createNode(groupItem); 
+            clearSelection(); 
+            updateLinks();
+            autoSave(); 
+        }
         function openNodeInModal(itemId) { const item = workflow.items[itemId]; if (!item) return; modalContent.innerHTML = ''; createNode(item, true); modalOverlay.style.display = 'flex'; }
         function closeModal() { modalOverlay.style.display = 'none'; modalContent.innerHTML = ''; }
         function clearAll() { if (confirm('Clear all nodes and data? This cannot be undone.')) { localStorage.removeItem(STORAGE_KEY); workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 }; groups = {}; renderWorkflow(); resetView(); } }
-        function zoom(factor, clientX, clientY) { const newScale = Math.min(Math.max(0.2, scale * factor), 3); if (newScale === scale) return; const canvasRect = canvas.getBoundingClientRect(); const mouseX = (clientX || canvasRect.left + canvasRect.width / 2) - canvasRect.left; const mouseY = (clientY || canvasRect.top + canvasRect.height / 2) - canvasRect.top; const viewportX = (mouseX - translateX) / scale; const viewportY = (mouseY - translateY) / scale; translateX -= viewportX * (newScale - scale); translateY -= viewportY * (newScale - scale); scale = newScale; updateViewportTransform(); }
+        function zoom(factor, clientX, clientY) { 
+            const newScale = Math.min(Math.max(MIN_ZOOM, scale * factor), MAX_ZOOM); 
+            if (newScale === scale) return; 
+            
+            const canvasRect = canvas.getBoundingClientRect(); 
+            
+            // Use mouse position or center of canvas
+            const mouseX = clientX !== undefined ? clientX - canvasRect.left : canvasRect.width / 2;
+            const mouseY = clientY !== undefined ? clientY - canvasRect.top : canvasRect.height / 2;
+            
+            // Convert mouse position to world coordinates before zoom
+            const worldX = (mouseX + canvas.scrollLeft - translateX) / scale;
+            const worldY = (mouseY + canvas.scrollTop - translateY) / scale;
+            
+            // Update scale
+            const oldScale = scale;
+            scale = newScale;
+            
+            // Calculate new translation to keep the world point under the mouse
+            translateX = mouseX + canvas.scrollLeft - worldX * scale;
+            translateY = mouseY + canvas.scrollTop - worldY * scale;
+            
+            updateViewportTransform(); 
+        }
         function updateViewportTransform() { viewport.style.transform = `scale(${scale}) translate(${translateX / scale}px, ${translateY / scale}px)`; zoomIndicator.textContent = Math.round(scale * 100) + '%'; updateLinks(); autoSave(); }
-        function clearSelection() { if (selectedNode) { selectedNode.classList.remove('selected'); } selectedNodes.forEach(n => n.classList.remove('selected')); selectedNode = null; selectedNodes = []; }
-        function selectNode(node, e) { if (e) e.stopPropagation(); if (node.id.startsWith('modal-')) return; clearSelection(); selectedNode = node; node.classList.add('selected'); }
+        function clearSelection() { 
+            // Clear all selection classes from all nodes
+            document.querySelectorAll('.node.selected, .node.multi-selected').forEach(node => {
+                node.classList.remove('selected', 'multi-selected');
+            });
+            selectedNode = null; 
+            selectedNodes = []; 
+        }
+        function selectNode(node, e) { 
+            if (e) e.stopPropagation(); 
+            if (node.id.startsWith('modal-')) return; 
+            clearSelection(); 
+            selectedNode = node; 
+            node.classList.add('selected'); 
+            selectedNodes = [node];
+        }
         function toggleNode(node) { const item = workflow.items[node.id]; if (!item) return; const isCurrentlyExpanded = node.classList.contains('expanded'); item.data.isExpanded = !isCurrentlyExpanded; node.classList.toggle('expanded'); if (item.type === 'group') { if (item.data.isExpanded) { const expandedWidth = item.data.expandedWidth || item.width; const expandedHeight = item.data.expandedHeight || item.height; node.style.width = expandedWidth + 'px'; node.style.height = expandedHeight + 'px'; item.width = expandedWidth; item.height = expandedHeight; } else { if (!item.data.expandedWidth || !item.data.expandedHeight) { item.data.expandedWidth = item.width; item.data.expandedHeight = item.height; } node.style.width = GROUP_COLLAPSED_WIDTH + 'px'; node.style.height = GROUP_COLLAPSED_HEIGHT + 'px'; } } updateLinks(); autoSave(); }
         
         // --- Utility and Helper Functions ---
@@ -1157,7 +1361,50 @@
         function handlePaste(e) { const activeElement = document.activeElement; if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') return; const items = e.clipboardData.items; for (let item of items) { if (item.type.indexOf('image') !== -1) { e.preventDefault(); const blob = item.getAsFile(); const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const canvasRect = canvas.getBoundingClientRect(); const defaultX = (canvasRect.width / 2 + canvas.scrollLeft - translateX) / scale; const defaultY = (canvasRect.height / 2 + canvas.scrollTop - translateY) / scale; const pasteItem = { id, type: 'data', x: contextMenuPos.x || defaultX, y: contextMenuPos.y || defaultY, width: 300, height: 200, data: { title: 'Pasted Image', dataType: 'image', content: event.target.result }, parentId: contextMenuPos.groupId || null }; workflow.items[id] = pasteItem; if (contextMenuPos.groupId) { addNodeToGroup(pasteItem, contextMenuPos.groupId); } else { createNode(pasteItem); } autoSave(); }; reader.readAsDataURL(blob); return; } } }
         function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
         function handleDrop(e) { e.preventDefault(); const files = e.dataTransfer.files; const canvasRect = canvas.getBoundingClientRect(); const dropX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale; const dropY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale; Array.from(files).forEach((file, index) => { if (file.type.startsWith('image/')) { const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const item = { id, type: 'data', x: dropX + (index * 20), y: dropY + (index * 20), width: 300, height: 200, data: { title: file.name, dataType: 'image', content: event.target.result }, parentId: null }; workflow.items[id] = item; createNode(item); autoSave(); }; reader.readAsDataURL(file); } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) { const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const item = { id, type: 'scribble', x: dropX + (index * 20), y: dropY + (index * 20), width: 400, height: 300, data: { title: file.name, content: event.target.result, isExpanded: true }, parentId: null }; workflow.items[id] = item; createNode(item); autoSave(); }; reader.readAsText(file); } }); }
-        function fitToScreen() { if (Object.keys(workflow.items).length === 0) return; let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0; let hasVisibleNodes = false; Object.values(workflow.items).forEach(item => { if (!item.parentId) { hasVisibleNodes = true; minX = Math.min(minX, item.x); minY = Math.min(minY, item.y); maxX = Math.max(maxX, item.x + item.width); maxY = Math.max(maxY, item.y + item.height); } }); if (!hasVisibleNodes) { resetView(); return; }; const padding = 50; const contentWidth = maxX - minX; const contentHeight = maxY - minY; const canvasWidth = canvas.clientWidth; const canvasHeight = canvas.clientHeight; const scaleX = canvasWidth / (contentWidth + padding * 2); const scaleY = canvasHeight / (contentHeight + padding * 2); scale = Math.min(scaleX, scaleY, 1); translateX = -minX * scale + (canvasWidth - contentWidth * scale) / 2; translateY = -minY * scale + (canvasHeight - contentHeight * scale) / 2; updateViewportTransform(); }
+        function fitToScreen() { 
+            if (Object.keys(workflow.items).length === 0) return; 
+            let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0; 
+            let hasVisibleNodes = false; 
+            
+            Object.values(workflow.items).forEach(item => { 
+                if (!item.parentId) { 
+                    hasVisibleNodes = true; 
+                    minX = Math.min(minX, item.x); 
+                    minY = Math.min(minY, item.y); 
+                    maxX = Math.max(maxX, item.x + item.width); 
+                    maxY = Math.max(maxY, item.y + item.height); 
+                } 
+            }); 
+            
+            if (!hasVisibleNodes) { 
+                resetView(); 
+                return; 
+            }
+            
+            const padding = 50; 
+            const contentWidth = maxX - minX; 
+            const contentHeight = maxY - minY; 
+            const canvasWidth = canvas.clientWidth; 
+            const canvasHeight = canvas.clientHeight; 
+            const scaleX = canvasWidth / (contentWidth + padding * 2); 
+            const scaleY = canvasHeight / (contentHeight + padding * 2); 
+            scale = Math.min(scaleX, scaleY, 1); 
+            
+            // Center the content
+            const contentCenterX = minX + contentWidth / 2;
+            const contentCenterY = minY + contentHeight / 2;
+            const canvasCenterX = canvasWidth / 2;
+            const canvasCenterY = canvasHeight / 2;
+            
+            translateX = canvasCenterX - contentCenterX * scale + canvas.scrollLeft;
+            translateY = canvasCenterY - contentCenterY * scale + canvas.scrollTop;
+            
+            updateViewportTransform(); 
+            
+            // Reset scroll to center
+            canvas.scrollLeft = 0;
+            canvas.scrollTop = 0;
+        }
         function resetView() { scale = 1; translateX = 0; translateY = 0; updateViewportTransform(); fitToScreen(); }
         function hasExpandableContent(item) { return item.type !== 'group' && (item.type === 'scribble' || item.type === 'task' || item.type === 'estimator' || item.type === 'adr' || item.type.startsWith('knowledge-') || item.type === 'data'); }
 
@@ -1165,7 +1412,7 @@
         initialize();
     </script>
     <div id="bottom-bar">
-        <span>Advanced Knowledge Tree Workflow System v1.1.1</span>
+        <span>Advanced Knowledge Tree Workflow System v1.1.2</span>
     </div>
 </body>
 </html>
