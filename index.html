@@ -701,6 +701,258 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        /* Dialog Styles */
+        .dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2100;
+        }
+        
+        .dialog-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        
+        .dialog h2 {
+            margin: 0 0 20px 0;
+            color: #202124;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .dialog h3 {
+            margin: 0 0 16px 0;
+            color: #5f6368;
+            font-size: 16px;
+        }
+        
+        .dialog label {
+            display: block;
+            margin-bottom: 16px;
+        }
+        
+        .dialog label span {
+            display: block;
+            margin-bottom: 4px;
+            color: #5f6368;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .dialog input[type="text"],
+        .dialog input[type="password"] {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        .dialog input:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        
+        .dialog small {
+            display: block;
+            margin-top: 4px;
+            color: #5f6368;
+            font-size: 12px;
+        }
+        
+        .dialog small a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        
+        .dialog small a:hover {
+            text-decoration: underline;
+        }
+        
+        .dialog-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .dialog button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .dialog button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .dialog button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #github-connect-btn, #github-load-btn {
+            background: #1a73e8;
+            color: white;
+        }
+        
+        #github-connect-btn:hover, #github-load-btn:hover:not(:disabled) {
+            background: #1557b0;
+        }
+        
+        #github-cancel-btn, #github-back-btn {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+        
+        #github-cancel-btn:hover, #github-back-btn:hover {
+            background: #e8eaed;
+        }
+        
+        #github-disconnect-btn {
+            background: #dc3545;
+            color: white;
+        }
+        
+        #github-disconnect-btn:hover {
+            background: #c82333;
+        }
+        
+        #github-new-file-btn {
+            background: #34a853;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            width: 100%;
+        }
+        
+        #github-new-file-btn:hover {
+            background: #2d8e47;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #github-files-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .github-file-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f3f4;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        
+        .github-file-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .github-file-item.selected {
+            background: #e8f0fe;
+            color: #1967d2;
+        }
+        
+        .github-file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .github-file-icon {
+            font-size: 16px;
+        }
+        
+        .github-file-name {
+            flex: 1;
+            font-size: 14px;
+        }
+        
+        .github-file-size {
+            font-size: 12px;
+            color: #5f6368;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 20px auto;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #github-status {
+            position: fixed;
+            top: 58px;
+            right: 16px;
+            background: #e8f0fe;
+            color: #1967d2;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 900;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #github-status:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        #github-status.error {
+            background: #fce8e6;
+            color: #d93025;
+        }
+        
+        #github-status.saving {
+            background: #fef7e0;
+            color: #f9ab00;
+        }
     </style>
 </head>
 <body>
@@ -708,6 +960,7 @@
         <h1>📊 Advanced Knowledge Tree Workflow System</h1>
         <button id="save-btn">💾 Save Workflow</button>
         <button id="load-btn">📁 Load Workflow</button>
+        <button id="github-btn">🐙 Load GitHub</button>
         <button id="fit-btn">🔍 Fit to Screen</button>
         <button id="zoom-in-btn">➕ Zoom In</button>
         <button id="zoom-out-btn">➖ Zoom Out</button>
@@ -769,14 +1022,53 @@
     </div>
 
     <div id="zoom-indicator">100%</div>
+    <div id="github-status">🐙 Connected to GitHub</div>
     <div id="loading">Loading workflow...</div>
     <div id="selection-rect"></div>
     <div id="modal-overlay">
         <div id="modal-content"></div>
     </div>
+    
+    <div id="github-dialog" class="dialog">
+        <div class="dialog-content">
+            <h2>🐙 GitHub Integration</h2>
+            <div id="github-auth-section">
+                <label>
+                    <span>GitHub Repository URL:</span>
+                    <input type="text" id="github-repo-url" placeholder="https://github.com/username/repo.git" value="">
+                </label>
+                <label>
+                    <span>Personal Access Token:</span>
+                    <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx">
+                    <small>Create a token at <a href="https://github.com/settings/tokens" target="_blank">GitHub Settings</a> with 'repo' scope</small>
+                    <small style="color: #666;">Note: SSH key authentication is not available in browser applications</small>
+                </label>
+                <div class="dialog-buttons">
+                    <button id="github-connect-btn">Connect</button>
+                    <button id="github-cancel-btn">Cancel</button>
+                </div>
+            </div>
+            <div id="github-files-section" style="display: none;">
+                <h3>Select Workflow File:</h3>
+                <div id="github-files-list"></div>
+                <div style="padding: 12px; border-top: 1px solid #e0e0e0; margin-top: 8px;">
+                    <button id="github-new-file-btn">📄 Create New Workflow File</button>
+                </div>
+                <div class="dialog-buttons">
+                    <button id="github-disconnect-btn" style="margin-right: auto;">Disconnect</button>
+                    <button id="github-back-btn">Back</button>
+                    <button id="github-load-btn" disabled>Load Selected</button>
+                </div>
+            </div>
+            <div id="github-loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Advanced Knowledge Tree Workflow System v1.2.0
+        // Advanced Knowledge Tree Workflow System v1.3.0
         // State management
         let workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
         let selectedNode = null;
@@ -798,8 +1090,19 @@
         let translateX = 0;
         let translateY = 0;
         
+        // GitHub integration state
+        let githubConfig = {
+            owner: '',
+            repo: '',
+            token: '',
+            filePath: '',
+            sha: '',
+            connected: false
+        };
+        
         const panThreshold = 5;
         const STORAGE_KEY = 'workflow-visualizer-state';
+        const GITHUB_CONFIG_KEY = 'workflow-github-config';
         const GROUP_COLLAPSED_WIDTH = 90;
         const GROUP_COLLAPSED_HEIGHT = 100;
         const ROUTING_MARGIN = 20;
@@ -815,6 +1118,7 @@
         const itemContextMenu = document.getElementById('item-context-menu');
         const saveBtn = document.getElementById('save-btn');
         const loadBtn = document.getElementById('load-btn');
+        const githubBtn = document.getElementById('github-btn');
         const fileInput = document.getElementById('file-input');
         const fitBtn = document.getElementById('fit-btn');
         const zoomInBtn = document.getElementById('zoom-in-btn');
@@ -827,6 +1131,8 @@
         const selectionRect = document.getElementById('selection-rect');
         const modalOverlay = document.getElementById('modal-overlay');
         const modalContent = document.getElementById('modal-content');
+        const githubDialog = document.getElementById('github-dialog');
+        const githubStatus = document.getElementById('github-status');
 
         const nodeIcons = { 'scribble': '📝', 'task': '✓', 'group': '📁', 'estimator': '📊', 'data': '📋', 'knowledge-section': '📚', 'knowledge-subsection': '📖', 'knowledge-item': '📄', 'adr': '🏛️' };
 
@@ -855,6 +1161,25 @@
             contextMenu.addEventListener('click', handleMenuClick);
             selectionContextMenu.addEventListener('click', handleSelectionMenuClick);
             itemContextMenu.addEventListener('click', handleItemMenuClick);
+            
+            // GitHub file selection with keyboard
+            document.getElementById('github-files-list').addEventListener('keydown', (e) => {
+                const items = Array.from(document.querySelectorAll('.github-file-item'));
+                const selected = document.querySelector('.github-file-item.selected');
+                const currentIndex = selected ? items.indexOf(selected) : -1;
+                
+                if (e.key === 'ArrowDown' && currentIndex < items.length - 1) {
+                    e.preventDefault();
+                    selectGithubFile(items[currentIndex + 1]);
+                } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+                    e.preventDefault();
+                    selectGithubFile(items[currentIndex - 1]);
+                } else if (e.key === 'Enter' && selected) {
+                    e.preventDefault();
+                    loadSelectedFile();
+                }
+            });
+            
             modalOverlay.addEventListener('click', (e) => { 
                 if (window.ignoreNextClick) {
                     window.ignoreNextClick = false;
@@ -1910,7 +2235,18 @@
         // --- Utility and Helper Functions ---
         function saveToLocalStorage() { try { const state = { workflow, groups, scale, translateX, translateY, scrollLeft: canvas.scrollLeft, scrollTop: canvas.scrollTop }; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { console.error('Error saving to localStorage:', error); } }
         function loadFromLocalStorage() { try { const savedState = localStorage.getItem(STORAGE_KEY); if (!savedState) return false; const state = JSON.parse(savedState); workflow = state.workflow || { items: {}, links: [], nextItemId: 1, nextLinkId: 1 }; groups = state.groups || {}; scale = state.scale || 1; translateX = state.translateX || 0; translateY = state.translateY || 0; renderWorkflow(); updateViewportTransform(); setTimeout(() => { if (state.scrollLeft) canvas.scrollLeft = state.scrollLeft; if (state.scrollTop) canvas.scrollTop = state.scrollTop; }, 50); return true; } catch (error) { console.error('Error loading from localStorage:', error); return false; } }
-        let saveTimeout; function autoSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToLocalStorage, 100); }
+        let saveTimeout; 
+        function autoSave() { 
+            clearTimeout(saveTimeout); 
+            saveTimeout = setTimeout(() => {
+                saveToLocalStorage();
+                if (githubConfig.connected && githubConfig.filePath) {
+                    // Debounce GitHub saves
+                    clearTimeout(window.githubSaveTimeout);
+                    window.githubSaveTimeout = setTimeout(saveToGithub, 2000);
+                }
+            }, 100); 
+        }
         function saveWorkflow() { const state = { items: workflow.items, links: workflow.links, nextItemId: workflow.nextItemId, nextLinkId: workflow.nextLinkId, groups: groups }; const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workflow.json'; a.click(); URL.revokeObjectURL(url); }
         function handleFileLoad(e) { const file = e.target.files[0]; if (!file) return; loading.style.display = 'block'; const reader = new FileReader(); reader.onload = (event) => { try { const data = JSON.parse(event.target.result); workflow = { items: data.items || {}, links: data.links || [], nextItemId: data.nextItemId || 1, nextLinkId: data.nextLinkId || 1 }; groups = data.groups || {}; renderWorkflow(); loading.style.display = 'none'; updateViewportTransform(); fitToScreen(); autoSave(); } catch (error) { alert('Error loading workflow: ' + error.message); loading.style.display = 'none'; } }; reader.readAsText(file); }
         function renderWorkflow() { 
@@ -2507,11 +2843,459 @@
         function resetView() { scale = 1; translateX = 0; translateY = 0; updateViewportTransform(); fitToScreen(); }
         function hasExpandableContent(item) { return item.type !== 'group' && (item.type === 'scribble' || item.type === 'task' || item.type === 'estimator' || item.type === 'adr' || item.type.startsWith('knowledge-') || item.type === 'data'); }
 
+        // --- GitHub Integration ---
+        function showGithubDialog() {
+            githubDialog.style.display = 'flex';
+            if (githubConfig.connected) {
+                showGithubFilesSection();
+            } else {
+                showGithubAuthSection();
+                // Pre-fill saved values
+                document.getElementById('github-repo-url').value = 
+                    githubConfig.owner && githubConfig.repo ? 
+                    `https://github.com/${githubConfig.owner}/${githubConfig.repo}.git` : '';
+                document.getElementById('github-token').value = githubConfig.token || '';
+            }
+        }
+        
+        function hideGithubDialog() {
+            githubDialog.style.display = 'none';
+        }
+        
+        function showGithubAuthSection() {
+            document.getElementById('github-auth-section').style.display = 'block';
+            document.getElementById('github-files-section').style.display = 'none';
+            document.getElementById('github-loading').style.display = 'none';
+        }
+        
+        function showGithubFilesSection() {
+            document.getElementById('github-auth-section').style.display = 'none';
+            document.getElementById('github-files-section').style.display = 'block';
+            document.getElementById('github-loading').style.display = 'none';
+            listGithubFiles();
+        }
+        
+        function showGithubLoading() {
+            document.getElementById('github-auth-section').style.display = 'none';
+            document.getElementById('github-files-section').style.display = 'none';
+            document.getElementById('github-loading').style.display = 'block';
+        }
+        
+        async function connectToGithub() {
+            const repoUrl = document.getElementById('github-repo-url').value.trim();
+            const token = document.getElementById('github-token').value.trim();
+            
+            if (!repoUrl || !token) {
+                alert('Please enter both repository URL and personal access token');
+                return;
+            }
+            
+            // Parse GitHub URL
+            const match = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+            if (!match) {
+                alert('Invalid GitHub repository URL');
+                return;
+            }
+            
+            githubConfig.owner = match[1];
+            githubConfig.repo = match[2];
+            githubConfig.token = token;
+            
+            showGithubLoading();
+            
+            try {
+                // Test connection by listing files
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 409 && errorData.message && errorData.message.includes('sha')) {
+                        // SHA conflict - file was updated elsewhere
+                        console.warn('GitHub file conflict detected, fetching latest version...');
+                        
+                        // Fetch the latest file data
+                        const latestResponse = await fetch(
+                            `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.filePath}`,
+                            {
+                                headers: {
+                                    'Authorization': `token ${githubConfig.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            }
+                        );
+                        
+                        if (latestResponse.ok) {
+                            const latestData = await latestResponse.json();
+                            githubConfig.sha = latestData.sha;
+                            
+                            // Retry the save with the new SHA
+                            const retryResponse = await fetch(
+                                `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.filePath}`,
+                                {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Authorization': `token ${githubConfig.token}`,
+                                        'Accept': 'application/vnd.github.v3+json',
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        message: `Update workflow: ${new Date().toISOString()}`,
+                                        content: content,
+                                        sha: githubConfig.sha
+                                    })
+                                }
+                            );
+                            
+                            if (retryResponse.ok) {
+                                const retryResult = await retryResponse.json();
+                                githubConfig.sha = retryResult.content.sha;
+                                saveGithubConfig();
+                                
+                                showGithubStatus('Saved to GitHub (resolved conflict)', 'success');
+                                setTimeout(() => {
+                                    showGithubStatus('Connected to GitHub: ' + githubConfig.filePath);
+                                }, 2000);
+                                return;
+                            }
+                        }
+                    }
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                githubConfig.connected = true;
+                saveGithubConfig();
+                showGithubFilesSection();
+                
+            } catch (error) {
+                console.error('GitHub connection error:', error);
+                alert('Failed to connect to GitHub. Please check your repository URL and token.');
+                showGithubAuthSection();
+            }
+        }
+        
+        async function listGithubFiles() {
+            const filesList = document.getElementById('github-files-list');
+            filesList.innerHTML = '';
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                const files = await response.json();
+                const jsonFiles = files.filter(file => file.name.endsWith('.json'));
+                
+                if (jsonFiles.length === 0) {
+                    filesList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No workflow files found in repository root<br><small>Note: Subdirectory support coming soon</small></div>';
+                    return;
+                }
+                
+                jsonFiles.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'github-file-item';
+                    fileItem.dataset.path = file.path;
+                    fileItem.dataset.sha = file.sha;
+                    fileItem.innerHTML = `
+                        <span class="github-file-icon">📄</span>
+                        <span class="github-file-name">${file.name}</span>
+                        <span class="github-file-size">${formatFileSize(file.size)}</span>
+                    `;
+                    fileItem.addEventListener('click', () => selectGithubFile(fileItem));
+                    filesList.appendChild(fileItem);
+                });
+                
+            } catch (error) {
+                console.error('Error listing GitHub files:', error);
+                filesList.innerHTML = '<div style="padding: 20px; text-align: center; color: #d93025;">Error loading files</div>';
+            }
+        }
+        
+        function selectGithubFile(fileItem) {
+            document.querySelectorAll('.github-file-item').forEach(item => 
+                item.classList.remove('selected')
+            );
+            fileItem.classList.add('selected');
+            document.getElementById('github-load-btn').disabled = false;
+        }
+        
+        async function loadSelectedFile() {
+            const selectedFile = document.querySelector('.github-file-item.selected');
+            if (!selectedFile) return;
+            
+            const filePath = selectedFile.dataset.path;
+            const sha = selectedFile.dataset.sha;
+            
+            showGithubLoading();
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${filePath}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                const fileData = await response.json();
+                const content = atob(fileData.content);
+                const workflowData = JSON.parse(content);
+                
+                // Load the workflow
+                workflow = {
+                    items: workflowData.items || {},
+                    links: workflowData.links || [],
+                    nextItemId: workflowData.nextItemId || 1,
+                    nextLinkId: workflowData.nextLinkId || 1
+                };
+                groups = workflowData.groups || {};
+                
+                // Clear local storage to avoid conflicts
+                localStorage.removeItem(STORAGE_KEY);
+                
+                // Store GitHub file info for saving
+                githubConfig.filePath = filePath;
+                githubConfig.sha = fileData.sha;
+                saveGithubConfig();
+                
+                renderWorkflow();
+                updateViewportTransform();
+                fitToScreen();
+                
+                hideGithubDialog();
+                showGithubStatus('Connected to GitHub: ' + filePath);
+                
+            } catch (error) {
+                console.error('Error loading file from GitHub:', error);
+                alert('Failed to load workflow file from GitHub');
+                showGithubFilesSection();
+            }
+        }
+        
+        async function saveToGithub() {
+            if (!githubConfig.connected || !githubConfig.filePath) return;
+            
+            showGithubStatus('Saving to GitHub...', 'saving');
+            
+            const state = {
+                items: workflow.items,
+                links: workflow.links,
+                nextItemId: workflow.nextItemId,
+                nextLinkId: workflow.nextLinkId,
+                groups: groups
+            };
+            
+            const content = btoa(JSON.stringify(state, null, 2));
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.filePath}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Update workflow: ${new Date().toISOString()}`,
+                            content: content,
+                            sha: githubConfig.sha
+                        })
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                githubConfig.sha = result.content.sha;
+                saveGithubConfig();
+                
+                showGithubStatus('Saved to GitHub', 'success');
+                setTimeout(() => {
+                    showGithubStatus('Connected to GitHub: ' + githubConfig.filePath);
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error saving to GitHub:', error);
+                showGithubStatus('Failed to save to GitHub', 'error');
+                setTimeout(() => {
+                    showGithubStatus('Connected to GitHub: ' + githubConfig.filePath);
+                }, 3000);
+            }
+        }
+        
+        function showGithubStatus(message, type = 'info') {
+            githubStatus.textContent = message;
+            githubStatus.className = type === 'error' ? 'error' : (type === 'saving' ? 'saving' : '');
+            githubStatus.style.display = 'flex';
+            
+            // Auto-hide after success
+            if (type === 'success') {
+                setTimeout(() => {
+                    githubStatus.style.display = 'none';
+                }, 3000);
+            }
+        }
+        
+        function saveGithubConfig() {
+            // Save config but not the token for security
+            const configToSave = {
+                owner: githubConfig.owner,
+                repo: githubConfig.repo,
+                filePath: githubConfig.filePath,
+                connected: githubConfig.connected
+            };
+            localStorage.setItem(GITHUB_CONFIG_KEY, JSON.stringify(configToSave));
+        }
+        
+        function loadGithubConfig() {
+            const saved = localStorage.getItem(GITHUB_CONFIG_KEY);
+            if (saved) {
+                const config = JSON.parse(saved);
+                Object.assign(githubConfig, config);
+                if (githubConfig.connected && githubConfig.filePath) {
+                    showGithubStatus('GitHub: ' + githubConfig.filePath + ' (token required)');
+                }
+            }
+        }
+        
+        async function createNewGithubFile() {
+            const fileName = prompt('Enter a name for the new workflow file:', 'workflow.json');
+            if (!fileName) return;
+            
+            const filePath = fileName.endsWith('.json') ? fileName : fileName + '.json';
+            
+            showGithubLoading();
+            
+            try {
+                // Check if file already exists
+                const checkResponse = await fetch(
+                    `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${filePath}`,
+                    {
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (checkResponse.ok) {
+                    alert('A file with this name already exists. Please choose a different name.');
+                    showGithubFilesSection();
+                    return;
+                }
+                
+                // Create new empty workflow
+                const newWorkflow = {
+                    items: {},
+                    links: [],
+                    nextItemId: 1,
+                    nextLinkId: 1,
+                    groups: {}
+                };
+                
+                const content = btoa(JSON.stringify(newWorkflow, null, 2));
+                
+                const response = await fetch(
+                    `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${filePath}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${githubConfig.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: `Create new workflow: ${filePath}`,
+                            content: content
+                        })
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`GitHub API error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                // Load the new empty workflow
+                workflow = newWorkflow;
+                groups = {};
+                
+                // Clear local storage
+                localStorage.removeItem(STORAGE_KEY);
+                
+                // Store GitHub file info
+                githubConfig.filePath = filePath;
+                githubConfig.sha = result.content.sha;
+                saveGithubConfig();
+                
+                renderWorkflow();
+                updateViewportTransform();
+                
+                hideGithubDialog();
+                showGithubStatus('Created and connected to: ' + filePath);
+                
+            } catch (error) {
+                console.error('Error creating GitHub file:', error);
+                alert('Failed to create new workflow file on GitHub');
+                showGithubFilesSection();
+            }
+        }
+        
+        function disconnectFromGithub() {
+            if (confirm('Disconnect from GitHub? You will need to re-enter your token to reconnect.')) {
+                githubConfig = {
+                    owner: '',
+                    repo: '',
+                    token: '',
+                    filePath: '',
+                    sha: '',
+                    connected: false
+                };
+                localStorage.removeItem(GITHUB_CONFIG_KEY);
+                githubStatus.style.display = 'none';
+                hideGithubDialog();
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
         // Start the application
         initialize();
     </script>
     <div id="bottom-bar">
-        <span>Advanced Knowledge Tree Workflow System v1.2.0</span>
+        <span>Advanced Knowledge Tree Workflow System v1.3.0</span>
     </div>
 </body>
 </html>
