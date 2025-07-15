@@ -161,6 +161,15 @@
             transition: none;
         }
 
+        .node.resizing {
+            opacity: 0.95;
+            transition: none !important;
+        }
+        
+        .node.resizing * {
+            pointer-events: none;
+        }
+
         /* Node Header */
         .node-header {
             padding: 10px 14px;
@@ -603,6 +612,7 @@
     </div>
 
     <script>
+        // Advanced Knowledge Tree Workflow System v1.1.1
         // State management
         let workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
         let selectedNode = null;
@@ -675,7 +685,13 @@
             document.addEventListener('paste', handlePaste);
             document.addEventListener('keydown', handleKeyboard);
             contextMenu.addEventListener('click', handleMenuClick);
-            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+            modalOverlay.addEventListener('click', (e) => { 
+                if (window.ignoreNextClick) {
+                    window.ignoreNextClick = false;
+                    return;
+                }
+                if (e.target === modalOverlay) closeModal(); 
+            });
             modalOverlay.addEventListener('mousedown', (e) => { e.stopPropagation(); });
             modalOverlay.addEventListener('mousemove', (e) => { if (isResizing) e.stopPropagation(); });
             modalOverlay.addEventListener('mouseup', (e) => { if (isResizing) e.stopPropagation(); });
@@ -764,7 +780,11 @@
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'resize-handle';
             node.appendChild(resizeHandle);
-            resizeHandle.addEventListener('mousedown', (e) => startResize(node, e));
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                startResize(node, e);
+            });
             
             if (!isModal) {
                 node.addEventListener('click', (e) => selectNode(node, e));
@@ -994,14 +1014,24 @@
         
         // --- Drag, Resize, Linking ---
         function startDrag(node, e) { if (e.target.classList.contains('node-control') || e.target.classList.contains('resize-handle')) return; if (e.altKey) { startLinking(node, e); return; } isDragging = true; const nodeRect = node.getBoundingClientRect(); dragOffset = { x: e.clientX - nodeRect.left, y: e.clientY - nodeRect.top }; node.classList.add('dragging'); selectNode(node, e); document.addEventListener('mousemove', handleDrag); document.addEventListener('mouseup', stopDrag); e.preventDefault(); }
-        function handleDrag(e) { e.stopPropagation(); if (!isDragging || !selectedNode) return; const canvasRect = canvas.getBoundingClientRect(); const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x; const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y; selectedNode.style.left = Math.max(0, x) + 'px'; selectedNode.style.top = Math.max(0, y) + 'px'; const item = workflow.items[selectedNode.id]; if (item) { item.x = Math.max(0, x); item.y = Math.max(0, y); } updateLinks(); }
-        function stopDrag() { if (!isDragging) return; isDragging = false; if (selectedNode) selectedNode.classList.remove('dragging'); autoSave(); document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', stopDrag); }
+        let updateLinksTimeout;
+        function updateLinksDebounced() {
+            clearTimeout(updateLinksTimeout);
+            updateLinksTimeout = setTimeout(updateLinks, 16); // ~60fps
+        }
+        
+        function handleDrag(e) { e.stopPropagation(); if (!isDragging || !selectedNode) return; const canvasRect = canvas.getBoundingClientRect(); const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x; const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y; selectedNode.style.left = Math.max(0, x) + 'px'; selectedNode.style.top = Math.max(0, y) + 'px'; const item = workflow.items[selectedNode.id]; if (item) { item.x = Math.max(0, x); item.y = Math.max(0, y); } updateLinksDebounced(); }
+        function stopDrag() { if (!isDragging) return; isDragging = false; if (selectedNode) selectedNode.classList.remove('dragging'); clearTimeout(updateLinksTimeout); updateLinks(); autoSave(); document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', stopDrag); }
         function startResize(node, e) { 
             isResizing = true; 
             const isModalNode = node.id.startsWith('modal-');
+            window.resizingIsModal = isModalNode;
             if (!isModalNode) {
                 selectNode(node, e); 
             }
+            // Add resizing class
+            node.classList.add('resizing');
+            
             // Store resize state
             window.resizingNode = node;
             window.resizeStartX = e.clientX;
@@ -1044,7 +1074,7 @@
                     item.data.expandedHeight = height; 
                 } 
             } 
-            if(!isModalNode) updateLinks(); 
+            // Don't update links during resize - wait until resize is complete
         }
         
         function stopResize(e) { 
@@ -1052,15 +1082,37 @@
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
+            
+            const wasModalResize = window.resizingIsModal;
+            const resizedNode = window.resizingNode;
+            
+            // Remove resizing class
+            if (resizedNode) {
+                resizedNode.classList.remove('resizing');
+            }
+            
             isResizing = false; 
             window.resizingNode = null;
             window.resizeStartX = null;
             window.resizeStartY = null;
             window.resizeStartWidth = null;
             window.resizeStartHeight = null;
+            window.resizingIsModal = null;
+            
+            // Only update links after resize is complete and only for non-modal nodes
+            if (!wasModalResize) {
+                updateLinks();
+            }
+            
             autoSave(); 
             document.removeEventListener('mousemove', handleResize, true); 
             document.removeEventListener('mouseup', stopResize, true); 
+            
+            // Prevent any click events from propagating after resize
+            setTimeout(() => {
+                window.ignoreNextClick = false;
+            }, 10);
+            window.ignoreNextClick = true;
         }
         function startLinking(node, e) { isLinking = true; linkSource = node; canvas.classList.add('linking'); tempLinkLine = document.createElementNS('http://www.w3.org/2000/svg', 'path'); tempLinkLine.classList.add('link'); tempLinkLine.style.strokeDasharray = '5,5'; tempLinkLine.style.color = '#1a73e8'; linksSvg.appendChild(tempLinkLine); node.classList.add('link-source'); document.addEventListener('mousemove', handleLinking); document.addEventListener('mouseup', stopLinking); e.preventDefault(); }
         function handleLinking(e) { if (!isLinking || !linkSource || !tempLinkLine) return; const sourceItem = workflow.items[linkSource.id]; if (!sourceItem) return; const canvasRect = canvas.getBoundingClientRect(); const mouseX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale; const mouseY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale; const sourceBox = getItemBoundingBox(sourceItem); const startPoint = { x: sourceBox.centerX, y: sourceBox.centerY}; tempLinkLine.setAttribute('d', `M ${startPoint.x} ${startPoint.y} L ${mouseX} ${mouseY}`); const targetNode = e.target.closest('.node'); document.querySelectorAll('.node.link-target').forEach(n => n.classList.remove('link-target')); if (targetNode && targetNode !== linkSource && !targetNode.classList.contains('inline-node')) { targetNode.classList.add('link-target'); } }
@@ -1113,7 +1165,7 @@
         initialize();
     </script>
     <div id="bottom-bar">
-        <span>Advanced Knowledge Tree Workflow System v1.1.0</span>
+        <span>Advanced Knowledge Tree Workflow System v1.1.1</span>
     </div>
 </body>
 </html>
