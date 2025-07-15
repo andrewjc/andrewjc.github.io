@@ -159,6 +159,12 @@
             border-color: #4caf50 !important;
             border-width: 3px !important;
         }
+        
+        .node.group.drop-target {
+            border-color: #4caf50 !important;
+            border-width: 3px !important;
+            background: rgba(76, 175, 80, 0.05);
+        }
 
         .node.dragging {
             opacity: 0.9;
@@ -225,6 +231,7 @@
             user-select: text;
         }
 
+        /* Node Controls */
         .node-controls {
             display: flex;
             gap: 4px;
@@ -247,6 +254,30 @@
             background: rgba(0,0,0,0.08);
         }
 
+        .view-control {
+            font-size: 12px;
+            padding: 0 4px;
+            width: auto;
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.2s;
+            color: #5f6368;
+        }
+
+        .view-control:hover {
+            background: rgba(0,0,0,0.08);
+        }
+
+        .view-control.active {
+            background: rgba(26, 115, 232, 0.1);
+            color: #1a73e8;
+        }
+
         .expand-icon {
             transition: transform 0.2s;
         }
@@ -262,7 +293,6 @@
             overflow: auto;
             user-select: text;
             display: none;
-            display: flex;
             flex-direction: column;
         }
 
@@ -270,7 +300,7 @@
             display: flex;
         }
         
-        .node.group:not(.expanded) .node-content { display: none; }
+        .node.group:not(.expanded) .node-content { display: none !important; }
 
 
         /* Node Type Specific Styles */
@@ -300,6 +330,38 @@
             gap: 16px;
             align-content: flex-start;
         }
+        
+        .group-content.graph-view {
+            position: relative;
+            min-height: 400px;
+            overflow: hidden;
+            background: #f9f9f9;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 4px;
+        }
+        
+        .group-content.list-view {
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+        }
+        
+        .group-graph-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+        
+        .group-graph-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
 
         .group-icon-representation {
             width: 100%;
@@ -310,7 +372,7 @@
             justify-content: center;
             gap: 8px;
             padding: 12px 8px;
-            cursor: pointer;
+            cursor: move;
         }
 
         .node.group:not(.expanded) {
@@ -342,7 +404,8 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             line-height: 1.3;
-            max-width: 100%;
+            max-width: 80px;
+            word-break: break-word;
         }
 
 
@@ -385,6 +448,76 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             line-height: 1.3;
+        }
+        
+        /* List View Styles */
+        .group-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.8);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .group-list-item:hover {
+            background: rgba(255,255,255,1);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            transform: translateX(2px);
+        }
+        
+        .group-list-item-icon {
+            font-size: 20px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .group-list-item-title {
+            font-size: 13px;
+            color: #202124;
+            flex-grow: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        /* Inline Node Styles for Graph View */
+        .node.inline-node {
+            position: absolute !important;
+            min-width: 120px !important;
+            min-height: 60px !important;
+            z-index: 1;
+        }
+        
+        .node.inline-node .node-header {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        .node.inline-node .node-type-icon {
+            width: 16px;
+            height: 16px;
+            font-size: 14px;
+        }
+        
+        .node.inline-node .node-title {
+            font-size: 12px;
+        }
+        
+        .node.inline-node .node-content {
+            padding: 8px;
+            font-size: 11px;
+        }
+        
+        .node.inline-node .resize-handle {
+            display: none;
         }
         
         /* Content Styles */
@@ -461,10 +594,21 @@
 
         .link-arrow {
             fill: currentColor;
+            color: #9e9e9e;
+        }
+        
+        .group-graph-svg .link {
+            stroke: #9e9e9e;
+            stroke-width: 2;
+            opacity: 0.8;
+        }
+        
+        .group-graph-svg .link-arrow {
+            fill: #9e9e9e;
         }
 
         /* Context Menu */
-        #context-menu, #selection-context-menu {
+        #context-menu, #selection-context-menu, #item-context-menu {
             position: fixed;
             background: white;
             border: 1px solid #dadce0;
@@ -607,11 +751,17 @@
         <div class="menu-item" data-action="export-workflow">💾 Export (Workflow)</div>
         <div class="menu-item" data-action="export-html">📄 Export (HTML)</div>
     </div>
+    
+    <div id="item-context-menu">
+        <div class="menu-item" data-action="open-item">📂 Open</div>
+        <div class="menu-item item-ungroup" data-action="ungroup-item">🔓 Ungroup</div>
+        <div class="menu-item" data-action="delete-item">🗑️ Delete</div>
+    </div>
 
     <div id="info-panel">
         <span>Right-click for menu</span>
         <span>•</span>
-        <span>Alt+drag to link</span>
+        <span>Alt+drag to link/extract</span>
         <span>•</span>
         <span>Ctrl+drag to select</span>
         <span>•</span>
@@ -626,7 +776,7 @@
     </div>
 
     <script>
-        // Advanced Knowledge Tree Workflow System v1.1.3
+        // Advanced Knowledge Tree Workflow System v1.2.0
         // State management
         let workflow = { items: {}, links: [], nextItemId: 1, nextLinkId: 1 };
         let selectedNode = null;
@@ -662,6 +812,7 @@
         const linksSvg = document.getElementById('links-svg');
         const contextMenu = document.getElementById('context-menu');
         const selectionContextMenu = document.getElementById('selection-context-menu');
+        const itemContextMenu = document.getElementById('item-context-menu');
         const saveBtn = document.getElementById('save-btn');
         const loadBtn = document.getElementById('load-btn');
         const fileInput = document.getElementById('file-input');
@@ -703,6 +854,7 @@
             document.addEventListener('keydown', handleKeyboard);
             contextMenu.addEventListener('click', handleMenuClick);
             selectionContextMenu.addEventListener('click', handleSelectionMenuClick);
+            itemContextMenu.addEventListener('click', handleItemMenuClick);
             modalOverlay.addEventListener('click', (e) => { 
                 if (window.ignoreNextClick) {
                     window.ignoreNextClick = false;
@@ -771,9 +923,10 @@
             panStart = { x: 0, y: 0 }; 
         }
         function handleCanvasClick(e) { 
-            if (contextMenu.style.display === 'block' || selectionContextMenu.style.display === 'block') { 
+            if (contextMenu.style.display === 'block' || selectionContextMenu.style.display === 'block' || itemContextMenu.style.display === 'block') { 
                 contextMenu.style.display = 'none'; 
                 selectionContextMenu.style.display = 'none';
+                itemContextMenu.style.display = 'none';
             } 
             if (!e.target.closest('.node') && !e.target.closest('.link-clickable')) { 
                 clearSelection(); 
@@ -783,9 +936,10 @@
             e.preventDefault(); 
             if (isPanning) return; 
             
-            // Hide both menus first
+            // Hide all menus first
             contextMenu.style.display = 'none';
             selectionContextMenu.style.display = 'none';
+            itemContextMenu.style.display = 'none';
             
             // Check if we have selected nodes
             if (selectedNodes.length > 0) {
@@ -821,98 +975,214 @@
             } }
 
         // --- Core Node Management ---
-        function createNode(item, isModal = false) {
+        function createNode(item, isModal = false, isInline = false) {
             const node = document.createElement('div');
             node.className = `node ${item.type}`;
+            if (isInline) node.classList.add('inline-node');
+            
             if (isModal) {
                 node.id = `modal-${item.id}`;
+            } else if (isInline) {
+                node.id = `inline-${item.id}`;
+                const parentItem = workflow.items[item.parentId];
+                if (parentItem && item.groupX !== undefined && item.groupY !== undefined) {
+                    node.style.left = item.groupX + 'px';
+                    node.style.top = item.groupY + 'px';
+                } else if (parentItem) {
+                    // Initialize position if not set
+                    const siblings = groups[item.parentId] || parentItem.data.children || [];
+                    const index = siblings.indexOf(item.id);
+                    item.groupX = 20 + (index % 3) * 150;
+                    item.groupY = 20 + Math.floor(index / 3) * 100;
+                    node.style.left = item.groupX + 'px';
+                    node.style.top = item.groupY + 'px';
+                } else {
+                    node.style.left = '20px';
+                    node.style.top = '20px';
+                }
             } else {
                 node.id = item.id;
                 node.style.left = item.x + 'px';
                 node.style.top = item.y + 'px';
             }
+            
             if (item.type === 'group' && !item.data.isExpanded) {
                 node.style.width = GROUP_COLLAPSED_WIDTH + 'px';
                 node.style.height = GROUP_COLLAPSED_HEIGHT + 'px';
             } else {
-                node.style.width = item.width + 'px';
-                node.style.height = item.height + 'px';
+                node.style.width = (isInline ? Math.min(item.width, 200) : item.width) + 'px';
+                node.style.height = (isInline ? Math.min(item.height, 150) : item.height) + 'px';
             }
+            
             const header = document.createElement('div');
             header.className = 'node-header';
             header.innerHTML = `<div class="node-type-icon">${nodeIcons[item.type] || '📄'}</div><div class="node-title">${item.data.title || 'Untitled'}</div>`;
+            
             const controls = document.createElement('div');
             controls.className = 'node-controls';
-            if (item.type === 'group' && !isModal) {
+            
+            if (item.type === 'group' && !isModal && !isInline) {
+                // Add view mode controls for groups
+                const viewMode = item.data.viewMode || 'icon';
+                
+                const iconViewBtn = document.createElement('div');
+                iconViewBtn.className = `view-control ${viewMode === 'icon' ? 'active' : ''}`;
+                iconViewBtn.innerHTML = '⊞';
+                iconViewBtn.title = 'Icon View';
+                iconViewBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    setGroupViewMode(item.id, 'icon');
+                });
+                controls.appendChild(iconViewBtn);
+                
+                const listViewBtn = document.createElement('div');
+                listViewBtn.className = `view-control ${viewMode === 'list' ? 'active' : ''}`;
+                listViewBtn.innerHTML = '☰';
+                listViewBtn.title = 'List View';
+                listViewBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    setGroupViewMode(item.id, 'list');
+                });
+                controls.appendChild(listViewBtn);
+                
+                const graphViewBtn = document.createElement('div');
+                graphViewBtn.className = `view-control ${viewMode === 'graph' ? 'active' : ''}`;
+                graphViewBtn.innerHTML = '⊙';
+                graphViewBtn.title = 'Graph View';
+                graphViewBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    setGroupViewMode(item.id, 'graph');
+                });
+                controls.appendChild(graphViewBtn);
+                
                 const expandBtn = document.createElement('div');
                 expandBtn.className = 'node-control expand-icon';
                 expandBtn.innerHTML = '▶';
-                expandBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleNode(node); });
+                expandBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    toggleNode(node); 
+                });
                 controls.appendChild(expandBtn);
             }
+            
             const deleteBtn = document.createElement('div');
             deleteBtn.className = 'node-control';
             deleteBtn.innerHTML = '✕';
             if (isModal) {
                 deleteBtn.title = 'Close';
-                deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); closeModal(); });
+                deleteBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    closeModal(); 
+                });
             } else {
                 deleteBtn.title = 'Delete Node';
-                deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); if (confirm('Delete this node?')) deleteNode(item.id); });
+                deleteBtn.addEventListener('click', (e) => { 
+                    e.stopPropagation(); 
+                    if (confirm('Delete this node?')) deleteNode(item.id); 
+                });
             }
             controls.appendChild(deleteBtn);
             header.appendChild(controls);
             
             const content = document.createElement('div');
             content.className = 'node-content';
+            
             switch (item.type) {
-                case 'scribble': content.innerHTML = `<textarea class="scribble-content" placeholder="Scribble away...">${item.data.content || ''}</textarea>`; break;
-                case 'task': content.innerHTML = createTaskContent(item.data); break;
-                case 'estimator': content.innerHTML = createEstimatorContent(item.data); break;
-                case 'data': content.innerHTML = createDataContent(item.data); break;
+                case 'scribble': 
+                    content.innerHTML = `<textarea class="scribble-content" placeholder="Scribble away...">${item.data.content || ''}</textarea>`; 
+                    break;
+                case 'task': 
+                    content.innerHTML = createTaskContent(item.data); 
+                    break;
+                case 'estimator': 
+                    content.innerHTML = createEstimatorContent(item.data); 
+                    break;
+                case 'data': 
+                    content.innerHTML = createDataContent(item.data); 
+                    break;
                 case 'group': {
                     const groupContent = document.createElement('div');
                     groupContent.className = 'group-content';
-                    populateGroupContent(groupContent, item);
+                    const viewMode = item.data.viewMode || 'icon';
+                    groupContent.classList.add(`${viewMode}-view`);
+                    populateGroupContent(groupContent, item, viewMode);
                     content.appendChild(groupContent);
+                    
                     const iconRepresentation = document.createElement('div');
                     iconRepresentation.className = 'group-icon-representation';
-                    iconRepresentation.innerHTML = `<div class="group-icon-representation-symbol">${nodeIcons.group}</div><div class="group-icon-representation-title">${item.data.title || 'Untitled'}</div>`;
-                    iconRepresentation.addEventListener('dblclick', (e) => { e.stopPropagation(); toggleNode(node); });
+                    const truncatedTitle = item.data.title && item.data.title.length > 64 ? 
+                        item.data.title.substring(0, 61) + '...' : 
+                        (item.data.title || 'Untitled');
+                    iconRepresentation.innerHTML = `<div class="group-icon-representation-symbol">${nodeIcons.group}</div><div class="group-icon-representation-title">${truncatedTitle}</div>`;
+                    iconRepresentation.addEventListener('dblclick', (e) => { 
+                        e.stopPropagation(); 
+                        toggleNode(node); 
+                    });
+                    iconRepresentation.addEventListener('mousedown', (e) => {
+                        if (!e.target.closest('.node-control')) {
+                            startDrag(node, e);
+                        }
+                    });
                     node.appendChild(iconRepresentation);
                     break;
                 }
-                case 'adr': content.innerHTML = createADRContent(item.data); break;
-                default: content.innerHTML = `<textarea class="knowledge-content">${item.data.content || ''}</textarea>`; break;
+                case 'adr': 
+                    content.innerHTML = createADRContent(item.data); 
+                    break;
+                default: 
+                    content.innerHTML = `<textarea class="knowledge-content">${item.data.content || ''}</textarea>`; 
+                    break;
             }
+            
             node.appendChild(header);
             node.appendChild(content);
 
-            const resizeHandle = document.createElement('div');
-            resizeHandle.className = 'resize-handle';
-            node.appendChild(resizeHandle);
-            resizeHandle.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                startResize(node, e);
-            });
+            if (!isInline) {
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                node.appendChild(resizeHandle);
+                resizeHandle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    startResize(node, e);
+                });
+            }
             
             if (!isModal) {
                 node.addEventListener('click', (e) => selectNode(node, e));
-                header.addEventListener('mousedown', (e) => startDrag(node, e));
+                
+                if (isInline) {
+                    // Special drag handling for inline nodes
+                    header.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        startInlineDrag(node, item, e);
+                    });
+                    node.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showItemContextMenu(e, item);
+                    });
+                } else {
+                    header.addEventListener('mousedown', (e) => startDrag(node, e));
+                }
             }
+            
             header.querySelector('.node-title').addEventListener('dblclick', (e) => editTitle(e.currentTarget, item, e));
             
             if (item.data.isExpanded || isModal) {
                 node.classList.add('expanded');
             }
+            
             setupInputListeners(node, item);
 
             if (isModal) {
                 modalContent.appendChild(node);
+            } else if (isInline) {
+                return node;
             } else {
                 viewport.appendChild(node);
             }
+            
             return node;
         }
 
@@ -920,27 +1190,53 @@
             const id = `item-${workflow.nextItemId++}`;
             const isGroup = type === 'group';
             const defaultData = { title: type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' '), content: '', isExpanded: true };
-            if (isGroup) { Object.assign(defaultData, { children: [], isExpanded: true }); groups[id] = []; }
+            if (isGroup) { 
+                Object.assign(defaultData, { children: [], isExpanded: true, viewMode: 'icon' }); 
+                groups[id] = []; 
+            }
             const item = { id, type, x, y, width: 400, height: 300, data: defaultData, parentId: contextMenuPos.groupId || null };
             workflow.items[id] = item;
-            if (contextMenuPos.groupId) { addNodeToGroup(item, contextMenuPos.groupId); }
-            else { createNode(item); }
-            updateLinks(); autoSave();
+            if (contextMenuPos.groupId) { 
+                addNodeToGroup(item, contextMenuPos.groupId); 
+            }
+            else { 
+                createNode(item); 
+            }
+            updateLinks(); 
+            autoSave();
         }
 
         function deleteNode(nodeId) {
             const node = document.getElementById(nodeId);
+            const inlineNode = document.getElementById(`inline-${nodeId}`);
             if (node) node.remove();
+            if (inlineNode) inlineNode.remove();
+            
             const item = workflow.items[nodeId];
-            if (item && item.type === 'group') { (groups[nodeId] || item.data.children || []).forEach(childId => deleteNode(childId)); }
+            if (item && item.type === 'group') { 
+                (groups[nodeId] || item.data.children || []).forEach(childId => deleteNode(childId)); 
+            }
             if (item && item.parentId) {
                 const parentItem = workflow.items[item.parentId];
-                if (parentItem && parentItem.data.children) { parentItem.data.children = parentItem.data.children.filter(id => id !== nodeId); }
-                if (groups[item.parentId]) { groups[item.parentId] = groups[item.parentId].filter(id => id !== nodeId); }
+                if (parentItem && parentItem.data.children) { 
+                    parentItem.data.children = parentItem.data.children.filter(id => id !== nodeId); 
+                }
+                if (groups[item.parentId]) { 
+                    groups[item.parentId] = groups[item.parentId].filter(id => id !== nodeId); 
+                }
+                // Refresh parent group display
+                const parentNode = document.getElementById(item.parentId);
+                if (parentNode) {
+                    const groupContent = parentNode.querySelector('.group-content');
+                    if (groupContent && parentItem) {
+                        populateGroupContent(groupContent, parentItem, parentItem.data.viewMode || 'icon');
+                    }
+                }
             }
             delete workflow.items[nodeId];
             workflow.links = workflow.links.filter(link => link.sourceId !== nodeId && link.targetId !== nodeId);
-            updateLinks(); autoSave();
+            updateLinks(); 
+            autoSave();
         }
 
         // --- Link Routing Engine ---
@@ -1088,13 +1384,23 @@
                 const targetItem = workflow.items[link.targetId];
                 if (!sourceItem || !targetItem) return;
                 
+                // Skip links between items in the same group (they'll be rendered inside the group)
+                if (sourceItem.parentId && targetItem.parentId && sourceItem.parentId === targetItem.parentId) {
+                    return;
+                }
+                
+                // Skip links where both items are inside groups
+                if (sourceItem.parentId || targetItem.parentId) {
+                    return;
+                }
+                
                 const sourceBoxInflated = getItemBoundingBox(sourceItem, true);
                 const targetBoxInflated = getItemBoundingBox(targetItem, true);
                 const sourceBoxActual = getItemBoundingBox(sourceItem, false);
                 const targetBoxActual = getItemBoundingBox(targetItem, false);
                 
                 const obstacles = allItems
-                    .filter(item => item.id !== sourceItem.id && item.id !== targetItem.id)
+                    .filter(item => item.id !== sourceItem.id && item.id !== targetItem.id && !item.parentId)
                     .map(item => getItemBoundingBox(item, true));
                 
                 let pathPoints = routePath(sourceBoxInflated, targetBoxInflated, obstacles);
@@ -1121,18 +1427,196 @@
                 linkGroup.appendChild(path);
                 linksSvg.appendChild(linkGroup);
             });
+            
+            // Update links in all expanded groups
+            Object.values(workflow.items).forEach(item => {
+                if (item.type === 'group' && item.data.isExpanded && item.data.viewMode === 'graph') {
+                    updateGroupLinks(item.id);
+                }
+            });
         }
         
         // --- Drag, Resize, Linking ---
-        function startDrag(node, e) { if (e.target.classList.contains('node-control') || e.target.classList.contains('resize-handle')) return; if (e.altKey) { startLinking(node, e); return; } isDragging = true; const nodeRect = node.getBoundingClientRect(); dragOffset = { x: e.clientX - nodeRect.left, y: e.clientY - nodeRect.top }; node.classList.add('dragging'); selectNode(node, e); document.addEventListener('mousemove', handleDrag); document.addEventListener('mouseup', stopDrag); e.preventDefault(); }
+        function startDrag(node, e) { 
+            if (e.target.classList.contains('node-control') || e.target.classList.contains('view-control') || e.target.classList.contains('resize-handle')) return; 
+            
+            // For collapsed groups, allow dragging from the icon representation
+            const isCollapsedGroup = node.classList.contains('group') && !node.classList.contains('expanded');
+            if (isCollapsedGroup && !e.target.closest('.group-icon-representation')) {
+                return;
+            }
+            
+            if (e.altKey) { 
+                startLinking(node, e); 
+                return; 
+            } 
+            
+            isDragging = true; 
+            const nodeRect = node.getBoundingClientRect(); 
+            dragOffset = { x: e.clientX - nodeRect.left, y: e.clientY - nodeRect.top }; 
+            node.classList.add('dragging'); 
+            selectNode(node, e); 
+            document.addEventListener('mousemove', handleDrag); 
+            document.addEventListener('mouseup', stopDrag); 
+            e.preventDefault(); 
+        }
         let updateLinksTimeout;
         function updateLinksDebounced() {
             clearTimeout(updateLinksTimeout);
             updateLinksTimeout = setTimeout(updateLinks, 16); // ~60fps
         }
         
-        function handleDrag(e) { e.stopPropagation(); if (!isDragging || !selectedNode) return; const canvasRect = canvas.getBoundingClientRect(); const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x; const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y; selectedNode.style.left = Math.max(0, x) + 'px'; selectedNode.style.top = Math.max(0, y) + 'px'; const item = workflow.items[selectedNode.id]; if (item) { item.x = Math.max(0, x); item.y = Math.max(0, y); } updateLinksDebounced(); }
-        function stopDrag() { if (!isDragging) return; isDragging = false; if (selectedNode) selectedNode.classList.remove('dragging'); clearTimeout(updateLinksTimeout); updateLinks(); autoSave(); document.removeEventListener('mousemove', handleDrag); document.removeEventListener('mouseup', stopDrag); }
+        function handleDrag(e) { 
+            e.stopPropagation(); 
+            if (!isDragging || !selectedNode) return; 
+            
+            const canvasRect = canvas.getBoundingClientRect(); 
+            const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - dragOffset.x; 
+            const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - dragOffset.y; 
+            
+            selectedNode.style.left = Math.max(0, x) + 'px'; 
+            selectedNode.style.top = Math.max(0, y) + 'px'; 
+            
+            const item = workflow.items[selectedNode.id]; 
+            if (item) { 
+                item.x = Math.max(0, x); 
+                item.y = Math.max(0, y); 
+                
+                // Clear previous drop target
+                document.querySelectorAll('.node.group.drop-target').forEach(n => n.classList.remove('drop-target'));
+                
+                // Check if dragging out of a group
+                if (item.parentId) {
+                    const parentGroup = document.getElementById(item.parentId);
+                    if (parentGroup) {
+                        const parentRect = parentGroup.getBoundingClientRect();
+                        const nodeRect = selectedNode.getBoundingClientRect();
+                        
+                        // Check if node is outside parent group
+                        if (nodeRect.left < parentRect.left || nodeRect.right > parentRect.right ||
+                            nodeRect.top < parentRect.top || nodeRect.bottom > parentRect.bottom) {
+                            
+                            // Remove from parent group
+                            removeFromGroup(item.id, item.parentId);
+                            
+                            // Check if over another group
+                            const targetGroup = getGroupUnderPoint(e.clientX, e.clientY, item.parentId);
+                            if (targetGroup && targetGroup.classList.contains('expanded')) {
+                                targetGroup.classList.add('drop-target');
+                                // Convert world coordinates to group-relative coordinates
+                                const targetRect = targetGroup.getBoundingClientRect();
+                                const canvasRect = canvas.getBoundingClientRect();
+                                item.groupX = (e.clientX - targetRect.left) / scale;
+                                item.groupY = (e.clientY - targetRect.top) / scale;
+                                addNodeToGroup(item, targetGroup.id);
+                            }
+                        }
+                    }
+                } else {
+                    // Check if dragging into a group
+                    const targetGroup = getGroupUnderPoint(e.clientX, e.clientY);
+                    if (targetGroup && targetGroup.classList.contains('expanded')) {
+                        targetGroup.classList.add('drop-target');
+                    }
+                }
+            } 
+            updateLinksDebounced(); 
+        }
+        
+        function getGroupUnderPoint(x, y, excludeId) {
+            const elements = document.elementsFromPoint(x, y);
+            return elements.find(el => 
+                el.classList.contains('node') && 
+                el.classList.contains('group') && 
+                el.id !== excludeId &&
+                !el.id.startsWith('inline-')
+            );
+        }
+        
+        function removeFromGroup(itemId, groupId) {
+            const item = workflow.items[itemId];
+            const groupItem = workflow.items[groupId];
+            
+            if (!item || !groupItem) return;
+            
+            item.parentId = null;
+            groups[groupId] = groups[groupId].filter(id => id !== itemId);
+            groupItem.data.children = groups[groupId];
+            
+            // Create node on canvas
+            createNode(item);
+            
+            // Update group display
+            const groupNode = document.getElementById(groupId);
+            if (groupNode) {
+                const groupContent = groupNode.querySelector('.group-content');
+                if (groupContent) {
+                    populateGroupContent(groupContent, groupItem, groupItem.data.viewMode || 'icon');
+                }
+            }
+        }
+        function startInlineDrag(node, item, e) {
+            isDragging = true;
+            selectedNode = node;
+            const nodeRect = node.getBoundingClientRect();
+            dragOffset = { x: e.clientX - nodeRect.left, y: e.clientY - nodeRect.top };
+            node.classList.add('dragging');
+            
+            // Store initial position
+            window.inlineDragItem = item;
+            window.inlineDragStart = { 
+                x: parseInt(node.style.left), 
+                y: parseInt(node.style.top) 
+            };
+            
+            document.addEventListener('mousemove', handleInlineDrag);
+            document.addEventListener('mouseup', stopInlineDrag);
+            e.preventDefault();
+        }
+        
+        function handleInlineDrag(e) {
+            if (!isDragging || !selectedNode || !window.inlineDragItem) return;
+            
+            const parentGroup = selectedNode.closest('.group-content');
+            if (!parentGroup) return;
+            
+            const parentRect = parentGroup.getBoundingClientRect();
+            const x = e.clientX - parentRect.left - dragOffset.x;
+            const y = e.clientY - parentRect.top - dragOffset.y;
+            
+            selectedNode.style.left = Math.max(0, x) + 'px';
+            selectedNode.style.top = Math.max(0, y) + 'px';
+            
+            // Update item's group position
+            window.inlineDragItem.groupX = Math.max(0, x);
+            window.inlineDragItem.groupY = Math.max(0, y);
+            
+            // Update group links in real-time
+            const groupId = window.inlineDragItem.parentId;
+            if (groupId) updateGroupLinks(groupId);
+        }
+        
+        function stopInlineDrag(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            if (selectedNode) selectedNode.classList.remove('dragging');
+            window.inlineDragItem = null;
+            window.inlineDragStart = null;
+            autoSave();
+            document.removeEventListener('mousemove', handleInlineDrag);
+            document.removeEventListener('mouseup', stopInlineDrag);
+        }
+        
+        function stopDrag() { 
+            if (!isDragging) return; 
+            isDragging = false; 
+            if (selectedNode) selectedNode.classList.remove('dragging'); 
+            clearTimeout(updateLinksTimeout); 
+            updateLinks(); 
+            autoSave(); 
+            document.removeEventListener('mousemove', handleDrag); 
+            document.removeEventListener('mouseup', stopDrag); 
+        }
         function startResize(node, e) { 
             isResizing = true; 
             const isModalNode = node.id.startsWith('modal-');
@@ -1324,7 +1808,8 @@
                     isExpanded: true, 
                     children: [], 
                     expandedWidth: groupWidth, 
-                    expandedHeight: groupHeight 
+                    expandedHeight: groupHeight,
+                    viewMode: 'icon'
                 }, 
                 parentId: null 
             }; 
@@ -1386,7 +1871,41 @@
             node.classList.add('selected'); 
             selectedNodes = [node];
         }
-        function toggleNode(node) { const item = workflow.items[node.id]; if (!item) return; const isCurrentlyExpanded = node.classList.contains('expanded'); item.data.isExpanded = !isCurrentlyExpanded; node.classList.toggle('expanded'); if (item.type === 'group') { if (item.data.isExpanded) { const expandedWidth = item.data.expandedWidth || item.width; const expandedHeight = item.data.expandedHeight || item.height; node.style.width = expandedWidth + 'px'; node.style.height = expandedHeight + 'px'; item.width = expandedWidth; item.height = expandedHeight; } else { if (!item.data.expandedWidth || !item.data.expandedHeight) { item.data.expandedWidth = item.width; item.data.expandedHeight = item.height; } node.style.width = GROUP_COLLAPSED_WIDTH + 'px'; node.style.height = GROUP_COLLAPSED_HEIGHT + 'px'; } } updateLinks(); autoSave(); }
+        function toggleNode(node) { 
+            const item = workflow.items[node.id]; 
+            if (!item) return; 
+            const isCurrentlyExpanded = node.classList.contains('expanded'); 
+            item.data.isExpanded = !isCurrentlyExpanded; 
+            node.classList.toggle('expanded'); 
+            if (item.type === 'group') { 
+                if (item.data.isExpanded) { 
+                    const expandedWidth = item.data.expandedWidth || item.width; 
+                    const expandedHeight = item.data.expandedHeight || item.height; 
+                    node.style.width = expandedWidth + 'px'; 
+                    node.style.height = expandedHeight + 'px'; 
+                    item.width = expandedWidth; 
+                    item.height = expandedHeight; 
+                } else { 
+                    if (!item.data.expandedWidth || !item.data.expandedHeight) { 
+                        item.data.expandedWidth = item.width; 
+                        item.data.expandedHeight = item.height; 
+                    } 
+                    node.style.width = GROUP_COLLAPSED_WIDTH + 'px'; 
+                    node.style.height = GROUP_COLLAPSED_HEIGHT + 'px';
+                    
+                    // Update icon title with truncation
+                    const iconTitle = node.querySelector('.group-icon-representation-title');
+                    if (iconTitle) {
+                        const truncatedTitle = item.data.title && item.data.title.length > 64 ? 
+                            item.data.title.substring(0, 64) + '...' : 
+                            (item.data.title || 'Untitled');
+                        iconTitle.textContent = truncatedTitle;
+                    }
+                } 
+            } 
+            updateLinks(); 
+            autoSave(); 
+        }
         
         // --- Utility and Helper Functions ---
         function saveToLocalStorage() { try { const state = { workflow, groups, scale, translateX, translateY, scrollLeft: canvas.scrollLeft, scrollTop: canvas.scrollTop }; localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { console.error('Error saving to localStorage:', error); } }
@@ -1394,17 +1913,350 @@
         let saveTimeout; function autoSave() { clearTimeout(saveTimeout); saveTimeout = setTimeout(saveToLocalStorage, 100); }
         function saveWorkflow() { const state = { items: workflow.items, links: workflow.links, nextItemId: workflow.nextItemId, nextLinkId: workflow.nextLinkId, groups: groups }; const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'workflow.json'; a.click(); URL.revokeObjectURL(url); }
         function handleFileLoad(e) { const file = e.target.files[0]; if (!file) return; loading.style.display = 'block'; const reader = new FileReader(); reader.onload = (event) => { try { const data = JSON.parse(event.target.result); workflow = { items: data.items || {}, links: data.links || [], nextItemId: data.nextItemId || 1, nextLinkId: data.nextLinkId || 1 }; groups = data.groups || {}; renderWorkflow(); loading.style.display = 'none'; updateViewportTransform(); fitToScreen(); autoSave(); } catch (error) { alert('Error loading workflow: ' + error.message); loading.style.display = 'none'; } }; reader.readAsText(file); }
-        function renderWorkflow() { viewport.querySelectorAll('.node').forEach(node => node.remove()); Object.values(workflow.items).forEach(item => { if (!item.parentId) createNode(item); }); updateLinks(); }
+        function renderWorkflow() { 
+            viewport.querySelectorAll('.node').forEach(node => node.remove()); 
+            Object.values(workflow.items).forEach(item => { 
+                if (!item.parentId) {
+                    // Ensure groups have a view mode
+                    if (item.type === 'group' && !item.data.viewMode) {
+                        item.data.viewMode = 'icon';
+                    }
+                    createNode(item);
+                }
+            }); 
+            updateLinks(); 
+        }
         function createTaskContent(data) { return `${data.description ? `<div class="task-description">${data.description}</div>` : ''}<div class="task-content"><label><span>Complexity (SP):</span><select class="complexity">${[1,2,3,5,8,13,21,34,55,89].map(n => `<option value="${n}" ${data.complexity == n ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><span>Risk Factor:</span><input type="number" class="risk" value="${data.risk || 0.1}" min="0" max="1" step="0.05"></label><label><span>Priority:</span><input type="number" class="priority" value="${data.priority || 3}" min="1" max="5"></label><label><span>Duration (days):</span><input type="number" class="duration" value="${data.duration || 1}" min="0.5" step="0.5"></label></div>`; }
         function createEstimatorContent(data) { return `<div class="estimator-content"><h4>Team & Project Factors</h4><label><span>Team Members:</span><input type="number" class="team-members" value="${data.teamMembers || 5}" min="1"></label><label><span>Hours/Day/Member:</span><input type="number" class="working-hours" value="${data.workingHours || 8}" min="1" step="0.5"></label><label><span>Overhead Factor:</span><input type="number" class="overhead" value="${data.overhead || 0.15}" min="0" max="0.99" step="0.01"></label><label><span>Productivity:</span><input type="number" class="productivity" value="${data.productivity || 0.85}" min="0.1" max="1.5" step="0.01"></label><label><span>Maturity/Learn:</span><input type="number" class="learning-curve" value="${data.learningCurve || 1.0}" min="0.5" step="0.05"></label><label><span>Hours per SP:</span><input type="number" class="hours-per-sp" value="${data.hoursPerStoryPoint || 4}" min="0.5" step="0.1"></label><div class="estimator-result"><p>Total Base SP: <strong class="base-sp">0</strong></p><p>Total Adjusted SP: <strong class="adj-sp">0</strong></p><p>Team Velocity: <strong class="velocity">0</strong></p><p>Est. Duration: <strong class="duration">N/A</strong></p></div></div>`; }
         function createDataContent(data) { return data.dataType === 'image' ? `<img class="data-image" src="${data.content}" alt="Pasted image">` : `<textarea class="data-text">${data.content || ''}</textarea>`; }
         function createADRContent(data) { return `<div class="adr-content"><label><span>Code:</span><input type="text" class="adr-code" value="${data.code || ''}"></label><label><span>Category:</span><input type="text" class="adr-category" value="${data.category || ''}"></label><label><span>Topic:</span><textarea class="adr-topic">${data.topic || ''}</textarea></label></div>`; }
-        function populateGroupContent(groupContentElement, groupItem) { groupContentElement.innerHTML = ''; const children = groups[groupItem.id] || groupItem.data.children || []; children.forEach(childId => { const childItem = workflow.items[childId]; if (!childItem) return; const childIcon = document.createElement('div'); childIcon.className = 'group-child-icon'; childIcon.dataset.childId = childId; childIcon.innerHTML = `<div class="group-child-icon-symbol">${nodeIcons[childItem.type] || '📄'}</div><div class="group-child-icon-title">${childItem.data.title || 'Untitled'}</div>`; childIcon.addEventListener('dblclick', (e) => { e.stopPropagation(); openNodeInModal(childId); }); groupContentElement.appendChild(childIcon); }); }
+        function populateGroupContent(groupContentElement, groupItem, viewMode = 'icon') {
+            groupContentElement.innerHTML = '';
+            const children = groups[groupItem.id] || groupItem.data.children || [];
+            
+            if (children.length === 0) {
+                groupContentElement.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">No items in this group</div>';
+                return;
+            }
+            
+            if (viewMode === 'icon') {
+                children.forEach(childId => {
+                    const childItem = workflow.items[childId];
+                    if (!childItem) return;
+                    const childIcon = document.createElement('div');
+                    childIcon.className = 'group-child-icon';
+                    childIcon.dataset.childId = childId;
+                    childIcon.innerHTML = `<div class="group-child-icon-symbol">${nodeIcons[childItem.type] || '📄'}</div><div class="group-child-icon-title">${childItem.data.title || 'Untitled'}</div>`;
+                    childIcon.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        openNodeInModal(childId);
+                    });
+                    childIcon.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showItemContextMenu(e, childItem);
+                    });
+                    childIcon.addEventListener('mousedown', (e) => {
+                        if (e.altKey) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startItemDragOut(childItem, e);
+                        }
+                    });
+                    groupContentElement.appendChild(childIcon);
+                });
+            } else if (viewMode === 'list') {
+                children.forEach(childId => {
+                    const childItem = workflow.items[childId];
+                    if (!childItem) return;
+                    const listItem = document.createElement('div');
+                    listItem.className = 'group-list-item';
+                    listItem.dataset.childId = childId;
+                    listItem.innerHTML = `
+                        <div class="group-list-item-icon">${nodeIcons[childItem.type] || '📄'}</div>
+                        <div class="group-list-item-title">${childItem.data.title || 'Untitled'}</div>
+                    `;
+                    listItem.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        openNodeInModal(childId);
+                    });
+                    listItem.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showItemContextMenu(e, childItem);
+                    });
+                    listItem.addEventListener('mousedown', (e) => {
+                        if (e.altKey) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startItemDragOut(childItem, e);
+                        }
+                    });
+                    groupContentElement.appendChild(listItem);
+                });
+                            } else if (viewMode === 'graph') {
+                const graphViewport = document.createElement('div');
+                graphViewport.className = 'group-graph-viewport';
+                graphViewport.style.height = '400px'; // Set explicit height
+                
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.classList.add('group-graph-svg');
+                svg.innerHTML = `
+                    <defs>
+                        <marker id="group-arrowhead-${groupItem.id}" markerWidth="10" markerHeight="7" 
+                                refX="9.5" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" class="link-arrow"/>
+                        </marker>
+                    </defs>
+                `;
+                graphViewport.appendChild(svg);
+                
+                children.forEach((childId, index) => {
+                    const childItem = workflow.items[childId];
+                    if (!childItem) return;
+                    
+                    // Set initial position if not set
+                    if (childItem.groupX === undefined || childItem.groupY === undefined) {
+                        childItem.groupX = 20 + (index % 3) * 150;
+                        childItem.groupY = 20 + Math.floor(index / 3) * 100;
+                    }
+                    
+                    const inlineNode = createNode(childItem, false, true);
+                    graphViewport.appendChild(inlineNode);
+                });
+                
+                groupContentElement.appendChild(graphViewport);
+                
+                // Update links for items in this group
+                setTimeout(() => updateGroupLinks(groupItem.id), 50);
+            }
+        }
+        
+        function setGroupViewMode(groupId, viewMode) {
+            const item = workflow.items[groupId];
+            if (!item || item.type !== 'group') return;
+            
+            // If switching to graph view, ensure all children have positions
+            if (viewMode === 'graph') {
+                const children = groups[groupId] || item.data.children || [];
+                children.forEach((childId, index) => {
+                    const childItem = workflow.items[childId];
+                    if (childItem && (childItem.groupX === undefined || childItem.groupY === undefined)) {
+                        childItem.groupX = 20 + (index % 3) * 150;
+                        childItem.groupY = 20 + Math.floor(index / 3) * 100;
+                    }
+                });
+            }
+            
+            item.data.viewMode = viewMode;
+            const node = document.getElementById(groupId);
+            if (!node) return;
+            
+            // Update view control buttons
+            node.querySelectorAll('.view-control').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = Array.from(node.querySelectorAll('.view-control')).find(btn => {
+                if (viewMode === 'icon' && btn.innerHTML === '⊞') return true;
+                if (viewMode === 'list' && btn.innerHTML === '☰') return true;
+                if (viewMode === 'graph' && btn.innerHTML === '⊙') return true;
+                return false;
+            });
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            // Repopulate content
+            const groupContent = node.querySelector('.group-content');
+            if (groupContent) {
+                groupContent.className = 'group-content ' + viewMode + '-view';
+                populateGroupContent(groupContent, item, viewMode);
+            }
+            
+            autoSave();
+        }
+        
+        function updateGroupLinks(groupId) {
+            const groupItem = workflow.items[groupId];
+            if (!groupItem || groupItem.data.viewMode !== 'graph') return;
+            
+            const groupNode = document.getElementById(groupId);
+            if (!groupNode) return;
+            
+            const svg = groupNode.querySelector('.group-graph-svg');
+            if (!svg) return;
+            
+            // Clear existing paths (except defs)
+            while (svg.lastChild && svg.lastChild.tagName !== 'defs') {
+                svg.removeChild(svg.lastChild);
+            }
+            
+            const children = groups[groupId] || groupItem.data.children || [];
+            
+            workflow.links.forEach(link => {
+                if (children.includes(link.sourceId) && children.includes(link.targetId)) {
+                    const sourceNode = groupNode.querySelector(`#inline-${link.sourceId}`);
+                    const targetNode = groupNode.querySelector(`#inline-${link.targetId}`);
+                    if (!sourceNode || !targetNode) return;
+                    
+                    const sourceItem = workflow.items[link.sourceId];
+                    const targetItem = workflow.items[link.targetId];
+                    
+                    if (!sourceItem || !targetItem) return;
+                    
+                    // Use stored positions
+                    const startX = (sourceItem.groupX || 0) + 60; // Center of node
+                    const startY = (sourceItem.groupY || 0) + 30;
+                    const endX = (targetItem.groupX || 0) + 60;
+                    const endY = (targetItem.groupY || 0) + 30;
+                    
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', `M ${startX} ${startY} L ${endX} ${endY}`);
+                    path.setAttribute('marker-end', `url(#group-arrowhead-${groupId})`);
+                    path.classList.add('link');
+                    svg.appendChild(path);
+                }
+            });
+        }
+        
+        function showItemContextMenu(e, item) {
+            // Hide all menus first
+            contextMenu.style.display = 'none';
+            selectionContextMenu.style.display = 'none';
+            itemContextMenu.style.display = 'none';
+            
+            // Store the item for menu actions
+            window.contextMenuItem = item;
+            
+            // Show/hide ungroup option based on item type
+            const ungroupOption = itemContextMenu.querySelector('.item-ungroup');
+            if (item.type === 'group') {
+                ungroupOption.style.display = 'block';
+            } else {
+                ungroupOption.style.display = 'none';
+            }
+            
+            itemContextMenu.style.left = e.clientX + 'px';
+            itemContextMenu.style.top = e.clientY + 'px';
+            itemContextMenu.style.display = 'block';
+        }
+        
+        function handleItemMenuClick(e) {
+            const menuItem = e.target.closest('.menu-item');
+            if (!menuItem) return;
+            const action = menuItem.dataset.action;
+            itemContextMenu.style.display = 'none';
+            
+            const item = window.contextMenuItem;
+            if (!item) return;
+            
+            switch (action) {
+                case 'open-item':
+                    openNodeInModal(item.id);
+                    break;
+                case 'ungroup-item':
+                    if (item.type === 'group') {
+                        ungroupItems(item.id);
+                    }
+                    break;
+                case 'delete-item':
+                    if (confirm('Delete this item?')) {
+                        deleteNode(item.id);
+                    }
+                    break;
+            }
+            
+            window.contextMenuItem = null;
+        }
+        
+        function startItemDragOut(item, e) {
+            if (!item.parentId) return;
+            
+            // Remove from group
+            removeFromGroup(item.id, item.parentId);
+            
+            // Get the newly created node
+            const node = document.getElementById(item.id);
+            if (!node) return;
+            
+            // Position it at cursor
+            const canvasRect = canvas.getBoundingClientRect();
+            const x = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale - 50;
+            const y = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale - 25;
+            
+            node.style.left = x + 'px';
+            node.style.top = y + 'px';
+            item.x = x;
+            item.y = y;
+            
+            // Start dragging immediately
+            startDrag(node, e);
+        }
+        
+        function ungroupItems(groupId) {
+            const groupItem = workflow.items[groupId];
+            if (!groupItem || groupItem.type !== 'group') return;
+            
+            const children = groups[groupId] || groupItem.data.children || [];
+            const groupX = groupItem.x;
+            const groupY = groupItem.y;
+            
+            // Move children to workspace
+            children.forEach((childId, index) => {
+                const childItem = workflow.items[childId];
+                if (childItem) {
+                    childItem.parentId = null;
+                    childItem.x = groupX + 50 + (index % 3) * 150;
+                    childItem.y = groupY + 50 + Math.floor(index / 3) * 150;
+                    createNode(childItem);
+                }
+            });
+            
+            // Remove the group
+            deleteNode(groupId);
+            updateLinks();
+        }
         function autoLayout() { const rootNodes = Object.values(workflow.items).filter(item => !item.parentId); if (rootNodes.length === 0) return; const hierarchy = buildHierarchy(rootNodes); const nodeSpacingX = 350, nodeSpacingY = 250, startX = 100, startY = 100; layoutHierarchy(hierarchy, startX, startY, nodeSpacingX, nodeSpacingY); Object.values(workflow.items).forEach(item => { const node = document.getElementById(item.id); if (node && !node.classList.contains('inline-node')) { node.style.left = item.x + 'px'; node.style.top = item.y + 'px'; } }); updateLinks(); autoSave(); }
         function buildHierarchy(nodes) { const hierarchy = []; nodes.forEach(node => { const hierNode = { item: node, children: [] }; const childLinks = workflow.links.filter(link => link.sourceId === node.id); childLinks.forEach(link => { const childItem = workflow.items[link.targetId]; if (childItem) hierNode.children.push(...buildHierarchy([childItem])); }); hierarchy.push(hierNode); }); return hierarchy; }
         function layoutHierarchy(hierarchy, startX, startY, spacingX, spacingY) { let currentX = startX; hierarchy.forEach((node, index) => { const subtreeWidth = calculateSubtreeWidth(node, spacingX); const centerX = currentX + subtreeWidth / 2; node.item.x = centerX - node.item.width / 2; node.item.y = startY; if (node.children.length > 0) layoutHierarchy(node.children, currentX, startY + spacingY, spacingX, spacingY); currentX += subtreeWidth + spacingX; }); }
         function calculateSubtreeWidth(node, spacing) { if (node.children.length === 0) return node.item.width; let totalWidth = 0; node.children.forEach((child, index) => { totalWidth += calculateSubtreeWidth(child, spacing); if (index < node.children.length - 1) totalWidth += spacing; }); return Math.max(node.item.width, totalWidth); }
-        function editTitle(titleEl, item, e) { e.stopPropagation(); const oldTitle = titleEl.textContent; titleEl.contentEditable = true; titleEl.focus(); const range = document.createRange(); range.selectNodeContents(titleEl); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); const save = () => { titleEl.contentEditable = false; const newTitle = titleEl.textContent.trim(); if (newTitle) { item.data.title = newTitle; autoSave(); const node = document.getElementById(item.id); if (node && item.type === 'group') { const iconTitle = node.querySelector('.group-icon-representation-title'); if (iconTitle) iconTitle.textContent = newTitle; } } else { titleEl.textContent = oldTitle; } }; titleEl.addEventListener('blur', save, { once: true }); titleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } else if (e.key === 'Escape') { titleEl.textContent = oldTitle; save(); } }); }
+        function editTitle(titleEl, item, e) { 
+            e.stopPropagation(); 
+            const oldTitle = titleEl.textContent; 
+            titleEl.contentEditable = true; 
+            titleEl.focus(); 
+            const range = document.createRange(); 
+            range.selectNodeContents(titleEl); 
+            const sel = window.getSelection(); 
+            sel.removeAllRanges(); 
+            sel.addRange(range); 
+            const save = () => { 
+                titleEl.contentEditable = false; 
+                const newTitle = titleEl.textContent.trim(); 
+                if (newTitle) { 
+                    item.data.title = newTitle; 
+                    autoSave(); 
+                    const node = document.getElementById(item.id); 
+                    if (node && item.type === 'group') { 
+                        const iconTitle = node.querySelector('.group-icon-representation-title'); 
+                        if (iconTitle) {
+                            const truncatedTitle = newTitle.length > 64 ? 
+                                newTitle.substring(0, 61) + '...' : 
+                                newTitle;
+                            iconTitle.textContent = truncatedTitle;
+                        }
+                    } 
+                } else { 
+                    titleEl.textContent = oldTitle; 
+                } 
+            }; 
+            titleEl.addEventListener('blur', save, { once: true }); 
+            titleEl.addEventListener('keydown', (e) => { 
+                if (e.key === 'Enter') { 
+                    e.preventDefault(); 
+                    save(); 
+                } else if (e.key === 'Escape') { 
+                    titleEl.textContent = oldTitle; 
+                    save(); 
+                } 
+            }); 
+        }
         function handleSelectionMenuClick(e) {
             const menuItem = e.target.closest('.menu-item');
             if (!menuItem) return;
@@ -1577,7 +2429,34 @@
         function setupInputListeners(node, item) { const inputs = node.querySelectorAll('input, select, textarea'); inputs.forEach(input => { input.addEventListener('change', () => { updateItemData(item); if (item.type === 'estimator') calculateEstimates(); autoSave(); }); input.addEventListener('mousedown', e => e.stopPropagation()); }); }
         function updateItemData(item) { const node = document.getElementById(item.id) || document.getElementById(`modal-${item.id}`); if (!node) return; switch (item.type) { case 'scribble': item.data.content = node.querySelector('.scribble-content')?.value; break; case 'task': item.data.complexity = node.querySelector('.complexity')?.value; item.data.risk = node.querySelector('.risk')?.value; item.data.priority = node.querySelector('.priority')?.value; item.data.duration = node.querySelector('.duration')?.value; break; case 'estimator': item.data.teamMembers = node.querySelector('.team-members')?.value; item.data.workingHours = node.querySelector('.working-hours')?.value; item.data.overhead = node.querySelector('.overhead')?.value; item.data.productivity = node.querySelector('.productivity')?.value; item.data.learningCurve = node.querySelector('.learning-curve')?.value; item.data.hoursPerStoryPoint = node.querySelector('.hours-per-sp')?.value; break; case 'data': if (node.querySelector('.data-text')) item.data.content = node.querySelector('.data-text').value; break; case 'adr': item.data.code = node.querySelector('.adr-code')?.value; item.data.category = node.querySelector('.adr-category')?.value; item.data.topic = node.querySelector('.adr-topic')?.value; break; default: item.data.content = node.querySelector('.knowledge-content')?.value; break; } }
         function calculateEstimates() { const estimator = Object.values(workflow.items).find(item => item.type === 'estimator'); if (!estimator) return; const estimatorNode = document.getElementById(estimator.id); if (!estimatorNode) return; let totalBaseSP = 0, totalAdjustedSP = 0; Object.values(workflow.items).filter(item => item.type === 'task' && (document.getElementById(item.id) || item.parentId)).forEach(task => { const complexity = parseFloat(task.data.complexity) || 0; const risk = parseFloat(task.data.risk) || 0; const duration = parseFloat(task.data.duration) || 0; totalBaseSP += complexity; const adjustedSP = complexity * (1 + risk) * (1 + 0.1 * Math.log(1 + Math.max(0, duration))); totalAdjustedSP += adjustedSP + (adjustedSP * (0.15 + 0.20 * risk)); }); const R = parseInt(estimator.data.teamMembers) || 0, D = parseFloat(estimator.data.workingHours) || 0, O = parseFloat(estimator.data.overhead) || 0, P = parseFloat(estimator.data.productivity) || 0, L = parseFloat(estimator.data.learningCurve) || 0, H = parseFloat(estimator.data.hoursPerStoryPoint) || 0; const effectiveHoursPerDay = R * D * (1 - O) * P * L; let teamVelocity = 0, estDuration = 'N/A'; if (H > 0 && effectiveHoursPerDay > 0) { teamVelocity = effectiveHoursPerDay / H; if (totalAdjustedSP > 0 && teamVelocity > 0) estDuration = (totalAdjustedSP / teamVelocity).toFixed(1); } estimatorNode.querySelector('.base-sp').textContent = totalBaseSP.toFixed(2); estimatorNode.querySelector('.adj-sp').textContent = totalAdjustedSP.toFixed(2); estimatorNode.querySelector('.velocity').textContent = teamVelocity.toFixed(2); estimatorNode.querySelector('.duration').textContent = estDuration; }
-        function addNodeToGroup(item, groupId) { if (!groups[groupId]) groups[groupId] = []; groups[groupId].push(item.id); const parentItem = workflow.items[groupId]; if (parentItem) parentItem.data.children = groups[groupId]; const groupNode = document.getElementById(groupId); if (groupNode) { const groupContent = groupNode.querySelector('.group-content'); if (groupContent) { populateGroupContent(groupContent, parentItem); } } }
+        function addNodeToGroup(item, groupId) { 
+            if (!groups[groupId]) groups[groupId] = []; 
+            
+            // Remove from previous parent if exists
+            if (item.parentId && item.parentId !== groupId) {
+                removeFromGroup(item.id, item.parentId);
+            }
+            
+            groups[groupId].push(item.id); 
+            item.parentId = groupId;
+            
+            const parentItem = workflow.items[groupId]; 
+            if (parentItem) parentItem.data.children = groups[groupId]; 
+            
+            const groupNode = document.getElementById(groupId); 
+            if (groupNode) { 
+                const groupContent = groupNode.querySelector('.group-content'); 
+                if (groupContent) { 
+                    populateGroupContent(groupContent, parentItem, parentItem.data.viewMode || 'icon'); 
+                } 
+                
+                // Remove the node from viewport if it's being added to a group
+                const existingNode = document.getElementById(item.id);
+                if (existingNode && !existingNode.id.startsWith('inline-')) {
+                    existingNode.remove();
+                }
+            } 
+        }
         function handlePaste(e) { const activeElement = document.activeElement; if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') return; const items = e.clipboardData.items; for (let item of items) { if (item.type.indexOf('image') !== -1) { e.preventDefault(); const blob = item.getAsFile(); const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const canvasRect = canvas.getBoundingClientRect(); const defaultX = (canvasRect.width / 2 + canvas.scrollLeft - translateX) / scale; const defaultY = (canvasRect.height / 2 + canvas.scrollTop - translateY) / scale; const pasteItem = { id, type: 'data', x: contextMenuPos.x || defaultX, y: contextMenuPos.y || defaultY, width: 300, height: 200, data: { title: 'Pasted Image', dataType: 'image', content: event.target.result }, parentId: contextMenuPos.groupId || null }; workflow.items[id] = pasteItem; if (contextMenuPos.groupId) { addNodeToGroup(pasteItem, contextMenuPos.groupId); } else { createNode(pasteItem); } autoSave(); }; reader.readAsDataURL(blob); return; } } }
         function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
         function handleDrop(e) { e.preventDefault(); const files = e.dataTransfer.files; const canvasRect = canvas.getBoundingClientRect(); const dropX = (e.clientX - canvasRect.left + canvas.scrollLeft - translateX) / scale; const dropY = (e.clientY - canvasRect.top + canvas.scrollTop - translateY) / scale; Array.from(files).forEach((file, index) => { if (file.type.startsWith('image/')) { const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const item = { id, type: 'data', x: dropX + (index * 20), y: dropY + (index * 20), width: 300, height: 200, data: { title: file.name, dataType: 'image', content: event.target.result }, parentId: null }; workflow.items[id] = item; createNode(item); autoSave(); }; reader.readAsDataURL(file); } else if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.md')) { const reader = new FileReader(); reader.onload = (event) => { const id = `item-${workflow.nextItemId++}`; const item = { id, type: 'scribble', x: dropX + (index * 20), y: dropY + (index * 20), width: 400, height: 300, data: { title: file.name, content: event.target.result, isExpanded: true }, parentId: null }; workflow.items[id] = item; createNode(item); autoSave(); }; reader.readAsText(file); } }); }
@@ -1632,7 +2511,7 @@
         initialize();
     </script>
     <div id="bottom-bar">
-        <span>Advanced Knowledge Tree Workflow System v1.1.3</span>
+        <span>Advanced Knowledge Tree Workflow System v1.2.0</span>
     </div>
 </body>
 </html>
